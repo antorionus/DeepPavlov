@@ -62,18 +62,19 @@ class FebTextGenerator(FebComponent):
             if intent.result_val:
                 gen_context['results'] = intent.result_val
             else:
-                gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+                gen_context['results'] = [{'error': FebUtterance.ERROR_IN_RESULT}]
         else:
             gen_context['query_name'] = FebIntent.INTENT_NOT_SET_TYPE
-            gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+            gen_context['results'] = [{'error': FebUtterance.ERROR_IN_RESULT}]
 
         # TODO:
+        log.debug(f'---gen_context___\n\n{gen_context}\n')
         result = answers.answer(gen_context)
 
         # utt.re_text = f'Result: {str(gen_context)} \n {repr(utt)}'
         # result = '; '.join(intent.result_str for intent in utt.intents if intent.result_str)
-        #TODO:
-        utt.re_text = f'Result: {result} \n {repr(utt)}'
+        utt.re_text = f'{result}'
+        # utt.re_text = f'Result: {result} \n {repr(utt)}'
         return  utt
 
 

@@ -101,8 +101,10 @@ class FebComponent(Component):
                 utt.add_error(FebError(FebError.ET_SYS, self, {FebError.EC_EXCEPTION: e}))
             if self.component_type() == self.FINAL_COMPONENT:
                 res_batch.append(utt.return_text())
+                dump = f'{utt.to_dump()}\n'
+                log.debug(dump)
                 # pretty_json(utt.to_dump())
-                LOG_FILE.write(f'{utt.to_dump()}\n'); LOG_FILE.flush()
+                LOG_FILE.write(dump); LOG_FILE.flush()
             else:
                 res_batch.append(utt)
         finish = time()
