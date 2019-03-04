@@ -1,9 +1,9 @@
-
+import pymorphy2 as pym
 from razdel import sentenize, tokenize
 import re
-
-from question2wikidata.server_queries import queries
-
+import string
+# from question2wikidata.server_queries import queries
+from FictionEmpatBot.queries.question2wikidata.server_queries import queries
 
 
 def var_dump(msg, header = ''): print(f'-----{header}-----\n{msg}\n----\n')
@@ -267,6 +267,9 @@ class FebEntity(FebObject):
     # types:
     AUTHOR = 'author'
     BOOK = 'book'
+    MORPH = pym.MorphAnalyzer()
+    GROUPING_SPACE_REGEX = re.compile('([^\w_\-\']|[+])', re.U)
+    PUNCTATION_REGEX = re.compile('([^\w]|[+])', re.U)
 
     def __init__(self, type,  **kwargs):
         super().__init__(**kwargs)
@@ -276,10 +279,10 @@ class FebEntity(FebObject):
         self.qname = kwargs.get('qname', None) # name in Wikidata
         self.normal_form = kwargs.get('normal_form', None)
         self.text_from_base = kwargs.get('text_from_base', None)
-
+        self.rollback_normal_form_capitalization()
 
     def to_text(self):
-        return ' '.join(t.text for t in self.tokens)
+        return ' '.join(t['text'] for t in self.tokens) # todo rollback "t.text" from t['text']
 
     def tokens_to_search_string(self):
         return self.to_text()
@@ -294,6 +297,46 @@ class FebEntity(FebObject):
         }
         return res_dict
 
+    def get_tags_list(self, word):
+        return self.MORPH.parse(word)
+
+    def rollback_normal_form_capitalization(self):
+        self.normal_form = self.normal_form.capitalize() if self.normal_form and self.to_text().istitle() else self.normal_form
+        return self.normal_form
+
+    def get_tokens_for_correct_inflect(self):
+        return [t for t in self.GROUPING_SPACE_REGEX.split(self.text_from_base if self.text_from_base else self.normal_form)]
+
+    def get_tokens_for_rollback_capitalization(self, word=None):
+        if word:
+            return [t for t in self.PUNCTATION_REGEX.split(word)]
+        else:
+            return [t for t in self.PUNCTATION_REGEX.split(self.text_from_base if self.text_from_base else self.normal_form)]
+
+    def get_correct_cased_word_capitalization(self, cased_string):  # todo too much code?
+        string_tokenized = self.get_tokens_for_rollback_capitalization()
+        cased_string_tokenized = self.get_tokens_for_rollback_capitalization(cased_string)
+        correct_capitalized_string = ''
+        for index, token in enumerate(string_tokenized):
+            if token in string.punctuation or token.isspace():
+                correct_capitalized_string = correct_capitalized_string + token
+                continue
+            if token[0].isupper():
+                correct_capitalized_string = correct_capitalized_string + cased_string_tokenized[index][:1].upper() + \
+                                       cased_string_tokenized[index][1:]
+                continue
+            else:
+                correct_capitalized_string = correct_capitalized_string + cased_string_tokenized[index]
+        return correct_capitalized_string
+
+    def inflect(self,case,entity_type=None):
+        tokenized_word_list = self.get_tokens_for_correct_inflect()
+        for token_word in tokenized_word_list:
+            word_tags = self.get_tags_list(token_word)
+
+        return
+
+
 class FebAuthor(FebEntity):
 
     def __init__(self,  **kwargs):
@@ -304,6 +347,7 @@ class FebBook(FebEntity):
 
     def __init__(self,  **kwargs):
         super().__init__(FebEntity.BOOK, **kwargs)
+
 
 class FebIntent(FebObject):
     """
@@ -380,3 +424,50 @@ class FebUtterance(FebObject):
             return 'Что-то пошло не так, попробуйте еще раз.'
 
 
+if __name__ == '__main__':
+    # dict_entity = {'entities':
+    #                    [
+    #                        {'type': 'book',
+    #                         'errors': [],
+    #                         'tokens':
+    #                             [{'type': 't_text',
+    #                               'errors': [],
+    #                               'start': 12,
+    #                               'stop': 20,
+    #                               'text': 'Каштанку',
+    #                               'lang': None,
+    #                               'normal_form': 'каштанка',
+    #                               'pos': 'NOUN',
+    #                               'tags': ['tag_book']}],
+    #                         'qid': 'Q3191735',
+    #                         'qname': None,
+    #                         'normal_form': 'Каштанка',
+    #                         'text_from_base': 'Каштанка'}]}
+    dict_entity = {'entities':
+                    [{'type': 'author',
+                      'errors': [],
+                      'tokens':
+                          [{'type': 't_text',
+                            'errors': [],
+                            'start': 41,
+                            'stop': 50,
+                            'text': 'Булгакова',
+                            'lang': None,
+                            'normal_form': 'булгаков',
+                            'pos': 'NOUN',
+                            'tags': ['tag_author']}],
+                      'qid': 'Q835',
+                      'qname': None,
+                      'normal_form': 'булгаков',
+                      'text_from_base': 'Михаил Афанасьевич Булгаков'}]}
+    dict_entity = dict_entity['entities'][0]
+
+    Fent = FebEntity(type=dict_entity['type'],
+                     errors=dict_entity['errors'],
+                     tokens=dict_entity['tokens'],
+                     qid=dict_entity['qid'],
+                     qname=dict_entity['qname'],
+                     normal_form=dict_entity['normal_form'],
+                     text_from_base=dict_entity['text_from_base'])
+
+    print(Fent.get_correct_cased_word_capitalization('михаила афаньевича булгакова'))
