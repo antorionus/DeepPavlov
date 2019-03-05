@@ -57,7 +57,6 @@ class NentToQent(FebComponent):
         :return: None (all results saved in place (for arguments))
         """
         entity.qid, entity.text_from_base = functions.get_qid_with_label(entity.normal_form, entity.type)
-
         return entity
 
 
