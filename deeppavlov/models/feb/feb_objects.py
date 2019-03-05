@@ -74,10 +74,6 @@ class FebError(object):
 
 
 class FebObject(object):
-    GROUPING_SPACE_REGEX = re.compile('([^\w_\-\']|[+])', re.U)
-    PUNCTATION_REGEX = re.compile('([^\w]|[+])', re.U)
-    QUESTION_TYPE_REGEX = re.compile('^(\w+(_characters|_author|_inspired_by))|author_name|author$')
-    MORPH = pym.MorphAnalyzer()
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -110,114 +106,6 @@ class FebObject(object):
             return {k: FebObject.recursive_json(v) for k, v in obj.__dict__.items() if k not in props_to_cut}
         else:
             return obj
-
-    @property
-    def nomn(self):
-        return self.call_inflect('nomn')
-
-    @property
-    def gent(self):
-        return self.call_inflect('gent')
-
-    @property
-    def datv(self):
-        return self.call_inflect('datv')
-
-    @property
-    def accs(self):
-        return self.call_inflect('accs')
-
-    @property
-    def ablt(self):
-        return self.call_inflect('ablt')
-
-    @property
-    def loct(self):
-        return self.call_inflect('loct')
-
-    def inflect_string(self, case, str_to_inflect, type=None):
-        output_string = ''
-        for token in self.simple_word_tokenize(str_to_inflect):
-            if token in string.punctuation or token.isspace():
-                output_string = output_string + token  # ['О', "'", 'Нил', ',', 'Юджин', 'dsasa-dasdsa']
-                continue
-
-            correct_parse = self.choose_correct_parse(self.MORPH.parse(token), type)
-
-            cased_tag = correct_parse.inflect({case})
-            if not cased_tag:
-                output_string = output_string + token
-                continue
-
-            # cased_word = self.correct_cased_word_capitalize(token, cased_tag.word)
-            cased_word = cased_tag.word
-            output_string = output_string + cased_word
-        output_string = self.rollback_string_capitalization(str_to_inflect, output_string)
-        return output_string
-
-    def call_inflect(self, case):
-        if isinstance(self, FebIntent):
-            results_dict, keys_list = self.results_val_list_parse
-            results_str = ', '.join(results_dict[keys_list[0]])
-            return self.inflect_string(case, results_str, self.type)
-        elif isinstance(self, FebEntity):
-            return self.inflect_string(case, self.text_from_base if self.text_from_base else self.normal_form,
-                                       self.type)
-
-    def simple_word_tokenize(self, str):
-        return [t for t in self.GROUPING_SPACE_REGEX.split(str)]
-
-    @staticmethod
-    def rollback_capitaliztion_from_text(str, new_string):
-        text_tokens_list = re.sub("[^\w_]", " ", str).split()
-        normal_form_tokens_list = re.sub("[^\w_]", " ", new_string).split()
-        for index, token in enumerate(text_tokens_list):
-            if token[0].isupper():
-                normal_form_right_cap = normal_form_tokens_list[index][:1].upper() + normal_form_tokens_list[index][1:]
-                normal_form_tokens_list[index] = normal_form_right_cap
-                continue
-        return ' '.join(normal_form_tokens_list)
-
-    def rollback_string_capitalization(self, str, new_string):
-        string_tokenized = [t for t in self.PUNCTATION_REGEX.split(str)]
-        cased_string_tokenized = [t for t in self.PUNCTATION_REGEX.split(new_string)]
-        correct_cased_string = ''
-        if len(string_tokenized) != len(cased_string_tokenized):  # нормальная форма не совпадает по пунктуации с текст
-            return self.rollback_capitaliztion_from_text(str, new_string)
-        else:
-            for index, token in enumerate(string_tokenized):
-                if token in string.punctuation or token.isspace():
-                    correct_cased_string = correct_cased_string + token
-                    continue
-                if token[0].isupper():
-                    correct_cased_string = correct_cased_string + cased_string_tokenized[index][:1].upper() + \
-                                           cased_string_tokenized[index][1:]
-                    continue
-                else:
-                    correct_cased_string = correct_cased_string + cased_string_tokenized[index]
-            return correct_cased_string
-
-    def choose_correct_parse(self, parsed, type):
-        correct_parse = None
-        if self.QUESTION_TYPE_REGEX.search(type):  # по типу вопрос
-            for inx, parsed_word in enumerate(parsed):
-                grams = parsed_word.tag
-                if {'sing'} in grams:  # единственное число
-                    if {'Name'} in grams or {'Surn'} in grams or {'Patr'} in grams or {'UNKN'} in grams:
-                        correct_parse = parsed[inx]
-                        break
-        elif type == 'book':
-            correct_parse = parsed[0]
-        else:
-            for inx, found_word in enumerate(parsed):
-                grams = found_word.tag
-                if not {'Surn'} in grams and not {'Name'} in grams and not {'Patr'} in grams:
-                    correct_parse = parsed[inx]
-                    break
-        if correct_parse is not None:
-            return correct_parse
-        else:
-            return parsed[0]
 
     IGNORE_IN_DUMP = {
         'FebToken': ['source_text'],
@@ -372,6 +260,14 @@ class FebEntity(FebObject):
     # types:
     AUTHOR = 'author'
     BOOK = 'book'
+    GEOX = 'place'
+    DATE = 'date'
+    CHAR = 'char'
+    OTHERS = 'others'
+    GROUPING_SPACE_REGEX = re.compile('([^\w_\-\']|[+])', re.U)
+    PUNCTATION_REGEX = re.compile('([^\w]|[+])', re.U)
+    # TYPE_REGEX = re.compile('^(\w+(_characters|_author|_inspired_by))|author_name|author$')
+    MORPH = pym.MorphAnalyzer()
 
     def __init__(self, type, **kwargs):
         super().__init__(**kwargs)
@@ -381,6 +277,7 @@ class FebEntity(FebObject):
         self.qname = kwargs.get('qname', None)  # name in Wikidata
         self.normal_form = kwargs.get('normal_form', None)
         self.text_from_base = kwargs.get('text_from_base', None)
+        self.rollback_normal_form_capitalization()
 
     def to_text(self):
         return ' '.join(t['text'] for t in self.tokens)  # todo rollback "t.text" from t['text']
@@ -398,6 +295,108 @@ class FebEntity(FebObject):
         }
         return res_dict
 
+    @property
+    def nomn(self):
+        return self.inflect_string('nomn')
+
+    @property
+    def gent(self):
+        return self.inflect_string('gent')
+
+    @property
+    def datv(self):
+        return self.inflect_string('datv')
+
+    @property
+    def accs(self):
+        return self.inflect_string('accs')
+
+    @property
+    def ablt(self):
+        return self.inflect_string('ablt')
+
+    @property
+    def loct(self):
+        return self.inflect_string('loct')
+
+    def inflect_string(self, case):
+        output_string = ''
+        for token in self.simple_word_tokenize(self.text_from_base if self.text_from_base else self.normal_form):
+            if token in string.punctuation or token.isspace():
+                output_string = output_string + token  # ['О', "'", 'Нил', ',', 'Юджин', 'dsasa-dasdsa']
+                continue
+
+            correct_parse = self.choose_correct_parse(self.MORPH.parse(token))
+
+            cased_tag = correct_parse.inflect({case})
+            if not cased_tag:
+                output_string = output_string + token
+                continue
+
+            cased_word = cased_tag.word
+            output_string = output_string + cased_word
+        output_string = self.rollback_string_capitalization(self.text_from_base if self.text_from_base else self.normal_form, output_string)
+        return output_string
+
+    def simple_word_tokenize(self, str):
+        return [t for t in self.GROUPING_SPACE_REGEX.split(str)]
+
+    @staticmethod
+    def rollback_capitaliztion_from_text(str, new_string):
+        text_tokens_list = re.sub("[^\w_]", " ", str).split()
+        new_string_tokens_list = re.sub("[^\w_]", " ", new_string).split()
+        for index, token in enumerate(text_tokens_list):
+            if token[0].isupper():
+                normal_form_right_cap = new_string_tokens_list[index][:1].upper() + new_string_tokens_list[index][1:]
+                new_string_tokens_list[index] = normal_form_right_cap
+                continue
+        return ' '.join(new_string_tokens_list)
+
+    def rollback_string_capitalization(self, str, new_string):
+        string_tokenized = [t for t in self.PUNCTATION_REGEX.split(str)]
+        new_string_tokenized = [t for t in self.PUNCTATION_REGEX.split(new_string)]
+        correct_capitalized_string = ''
+        if len(string_tokenized) != len(new_string_tokenized):  # нормальная форма не совпадает по пунктуации с текст
+            return self.rollback_capitaliztion_from_text(str, new_string)
+        else:
+            for index, token in enumerate(string_tokenized):
+                if token in string.punctuation or token.isspace():
+                    correct_capitalized_string = correct_capitalized_string + token
+                    continue
+                if token[0].isupper():
+                    correct_capitalized_string = correct_capitalized_string + new_string_tokenized[index][:1].upper() + \
+                                           new_string_tokenized[index][1:]
+                    continue
+                else:
+                    correct_capitalized_string = correct_capitalized_string + new_string_tokenized[index]
+        return correct_capitalized_string
+
+    def rollback_normal_form_capitalization(self):
+        self.normal_form = self.rollback_string_capitalization(self.to_text(),self.normal_form) \
+            if self.normal_form and self.tokens else self.normal_form
+
+    def choose_correct_parse(self, parsed):
+        correct_parse = None
+        if isinstance(self, FebAuthor):  # по типу вопрос
+            for inx, parsed_word in enumerate(parsed):
+                grams = parsed_word.tag
+                if {'sing'} in grams:  # единственное число
+                    if {'Name'} in grams or {'Surn'} in grams or {'Patr'} in grams or {'UNKN'} in grams:
+                        correct_parse = parsed[inx]
+                        break
+        elif isinstance(self,FebBook):  # todo elif isinstance(self, FebGeox)
+            correct_parse = parsed[0]
+        else:
+            for inx, found_word in enumerate(parsed):
+                grams = found_word.tag
+                if not {'Surn'} in grams and not {'Name'} in grams and not {'Patr'} in grams:
+                    correct_parse = parsed[inx]
+                    break
+        if correct_parse is not None:
+            return correct_parse
+        else:
+            return parsed[0]
+
 
 class FebAuthor(FebEntity):
 
@@ -409,6 +408,29 @@ class FebBook(FebEntity):
 
     def __init__(self, **kwargs):
         super().__init__(FebEntity.BOOK, **kwargs)
+
+
+class FebGeox(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.GEOX, **kwargs)
+
+
+class FebDate(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.DATE, **kwargs)
+
+class FebChar(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.CHAR, **kwargs)
+
+
+class FebOthers(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.OTHERS, **kwargs)
 
 
 class FebIntent(FebObject):
@@ -476,6 +498,29 @@ class FebIntent(FebObject):
 
         return parsed_result_dict, list(results_keys_set)
 
+    def results_to_entities(self):
+        results_dict,results_keys = self.results_val_list_parse
+        for results_key in results_keys:
+            results_val_list = results_dict[results_key]
+            if results_key == 'authorLabel':
+                results_dict[results_key] = [FebAuthor(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'bookLabel':
+                results_dict[results_key] = [FebBook(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'placeLabel':
+                results_dict[results_key] = [FebGeox(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'years':
+                results_dict[results_key] = [FebDate(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'charsLabel':
+                results_dict[results_key] = [FebChar(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key in ('langLabel', 'genreLabel','subjLabel'):
+                results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
+            else:
+                results_dict[results_key] = [FebEntity(text_from_base=result_text) for result_text in results_val_list]
+        return results_dict
+
+
+
+
 
 class FebUtterance(FebObject):
     ERROR_IN_RESULT = 'error_in_result'
@@ -528,14 +573,14 @@ if __name__ == '__main__':
                                'errors': [],
                                'start': 41,
                                'stop': 50,
-                               'text': 'Булгакова',
+                               'text': 'А. С. Булгакова',
                                'lang': None,
-                               'normal_form': 'булгаков',
+                               'normal_form': 'А С булгаков',
                                'pos': 'NOUN',
                                'tags': ['tag_author']}],
                          'qid': 'Q835',
                          'qname': None,
-                         'normal_form': 'булгаков',
+                         'normal_form': 'А С булгаков',
                          'text_from_base': 'Михаил Афанасьевич Булгаков'}]}
     dict_entity = dict_entity['entities'][0]
 
@@ -545,27 +590,33 @@ if __name__ == '__main__':
                             'errors': [],
                             'result_qid': None,
                             'result_val': [
-                                {'titleLabel': 'Князь Серебряный'},
-                                {'titleLabel': 'Смерть Иоанна Грозного'},
-                                {'titleLabel': 'Царь Фёдор Иоаннович'},
-                                {'titleLabel': 'Кот-д\'Ивуар'}]
+                                {'bookLabel': 'Князь Серебряный'},
+                                {'bookLabel': 'Смерть Иоанна Грозного'},
+                                {'bookLabel': 'Царь Фёдор Иоаннович'},
+                                {'authorLabel': 'Кот-д\'Ивуар'}]
                             }
                        ]
     }
     dict_intent = dict_intent['intents'][0]
 
 
-    Fent = FebEntity(type=dict_entity['type'],
-                     errors=dict_entity['errors'],
-                     tokens=dict_entity['tokens'],
-                     qid=dict_entity['qid'],
-                     qname=dict_entity['qname'],
-                     normal_form=dict_entity['normal_form'],
-                     text_from_base=dict_entity['text_from_base'])
+    # Fent = FebEntity(type=dict_entity['type'],
+    #                  errors=dict_entity['errors'],
+    #                  tokens=dict_entity['tokens'],
+    #                  qid=dict_entity['qid'],
+    #                  qname=dict_entity['qname'],
+    #                  normal_form=dict_entity['normal_form'],
+    #                  text_from_base=dict_entity['text_from_base'])
 
+    # Faut = FebAuthor(type='author', errors=[], tokens=[
+    #     FebToken((11, 16, Фёдор, type=t_text, tags={'tag_author'}, pos=NOUN, normal_form=федор)),
+    #     FebToken((17, 28, Достоевский, type=t_text, tags={'tag_author'}, pos=NOUN, normal_form=достоевский)),
+    #                       qid='Q991', qname=None, normal_form='фёдор достоевский', text_from_base=None)])
+
+    Faut = FebAuthor(normal_form=dict_entity['normal_form'], text_from_base=dict_entity['text_from_base'])
     Fint = FebIntent(type=dict_intent['type'],
                      result_qid=dict_intent['result_qid'],
                      result_val=dict_intent['result_val'])
 
-    print(Fent.ablt)
-    print(Fint.ablt)
+    print(Faut.ablt)
+    print(Fint.results_to_entities())
