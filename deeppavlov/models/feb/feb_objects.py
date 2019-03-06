@@ -396,10 +396,10 @@ class FebEntity(FebObject):
                     correct_parse = parsed[inx]
                     break
         if correct_parse is not None:
-            log.debug(f'---MorphAnalyzer___\n\n{correct_parse}\n')
+            # log.debug(f'---MorphAnalyzer___\n\n{correct_parse}\n')
             return correct_parse
         else:
-            log.debug(f'---MorphAnalyzer___\n\n{parsed[0]}\n')
+            # log.debug(f'---MorphAnalyzer___\n\n{parsed[0]}\n')
             return parsed[0]
 
 
