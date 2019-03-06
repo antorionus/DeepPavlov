@@ -2,9 +2,10 @@ import pymorphy2 as pym
 from razdel import sentenize, tokenize
 import re
 import string
-# from question2wikidata.server_queries import queries
-from FictionEmpatBot.queries.question2wikidata.server_queries import queries
+from question2wikidata.server_queries import queries
+# from FictionEmpatBot.queries.question2wikidata.server_queries import queries
 from deeppavlov.core.common.log import get_logger
+import requests
 
 log = get_logger(__name__)
 
@@ -533,6 +534,7 @@ class FebUtterance(FebObject):
         super().__init__(**kwargs)
 
         self.text = text  # input text
+        self.get_suggested_text_from_yandex_speller()
         self.tokens = None  # list of tokens
         self.entities = []  # list of entities
         self.intents = []  # list of intents
@@ -548,79 +550,26 @@ class FebUtterance(FebObject):
         else:
             return 'Что-то пошло не так, попробуйте еще раз.'
 
+    def get_suggested_text_from_yandex_speller(self):
+        response = self.request_spell_check()
+        text_copy = self.text
+        if response and len(response.json()) != 0:
+            errors_list = response.json()
+            for error in errors_list:
+                if error['s'] is not None or len(error['s']) != 0:
+                    self.text = self.text.replace(error['word'], error['s'][0])
+            log.debug(f'---yandexspeller___\n\nErrors found, right text:   {self.text}\n \t Old text: {text_copy}')
+        else:
+            log.debug(f'---yandexspeller___\n\nNo errors found or yandex_speller failure:   {self.text}\n')
+            self.text = self.text
 
-if __name__ == '__main__':
-    # pass
-    # dict_entity = {'entities':
-    #                    [
-    #                        {'type': 'book',
-    #                         'errors': [],
-    #                         'tokens':
-    #                             [{'type': 't_text',
-    #                               'errors': [],
-    #                               'start': 12,
-    #                               'stop': 20,
-    #                               'text': 'Каштанку',
-    #                               'lang': None,
-    #                               'normal_form': 'каштанка',
-    #                               'pos': 'NOUN',
-    #                               'tags': ['tag_book']}],
-    #                         'qid': 'Q3191735',
-    #                         'qname': None,
-    #                         'normal_form': 'Каштанка',
-    #                         'text_from_base': 'Каштанка'}]}
-    dict_entity = {'entities':
-                       [{'type': 'author',
-                         'errors': [],
-                         'tokens':
-                             [{'type': 't_text',
-                               'errors': [],
-                               'start': 41,
-                               'stop': 50,
-                               'text': 'А. С. Булгакова',
-                               'lang': None,
-                               'normal_form': 'А С булгаков',
-                               'pos': 'NOUN',
-                               'tags': ['tag_author']}],
-                         'qid': 'Q835',
-                         'qname': None,
-                         'normal_form': 'А С булгаков',
-                         'text_from_base': 'Михаил Афанасьевич Булгаков'}]}
-    dict_entity = dict_entity['entities'][0]
-
-    dict_intent = {'intents':
-                       [
-                           {'type': 'author_productions',
-                            'errors': [],
-                            'result_qid': None,
-                            'result_val': [
-                                {'bookLabel': 'Князь Серебряный'},
-                                {'bookLabel': 'Смерть Иоанна Грозного'},
-                                {'bookLabel': 'Царь Фёдор Иоаннович'},
-                                {'authorLabel': 'Кот-д\'Ивуар'}]
-                            }
-                       ]
-    }
-    dict_intent = dict_intent['intents'][0]
-
-
-    # Fent = FebEntity(type=dict_entity['type'],
-    #                  errors=dict_entity['errors'],
-    #                  tokens=dict_entity['tokens'],
-    #                  qid=dict_entity['qid'],
-    #                  qname=dict_entity['qname'],
-    #                  normal_form=dict_entity['normal_form'],
-    #                  text_from_base=dict_entity['text_from_base'])
-
-    # Faut = FebAuthor(type='author', errors=[], tokens=[
-    #     FebToken((11, 16, Фёдор, type=t_text, tags={'tag_author'}, pos=NOUN, normal_form=федор)),
-    #     FebToken((17, 28, Достоевский, type=t_text, tags={'tag_author'}, pos=NOUN, normal_form=достоевский)),
-    #                       qid='Q991', qname=None, normal_form='фёдор достоевский', text_from_base=None)])
-
-    Faut = FebAuthor(normal_form=dict_entity['normal_form'], text_from_base=dict_entity['text_from_base'])
-    Fint = FebIntent(type=dict_intent['type'],
-                     result_qid=dict_intent['result_qid'],
-                     result_val=dict_intent['result_val'])
-
-    print(Faut.ablt)
-    print(Fint.results_to_entities())
+    def request_spell_check(self):
+        response = requests.get('https://speller.yandex.net/services/spellservice.json/checkText',
+                                params={'text': self.text})
+        if response.status_code == 200:
+            if response is None:
+                return None
+            else:
+                return response
+        else:
+            return None
