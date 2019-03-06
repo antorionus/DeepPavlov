@@ -280,7 +280,7 @@ class FebEntity(FebObject):
         self.rollback_normal_form_capitalization()
 
     def to_text(self):
-        return ' '.join(t['text'] for t in self.tokens)  # todo rollback "t.text" from t['text']
+        return ' '.join(t.text for t in self.tokens)  # todo rollback "t.text" from t['text']
 
     def tokens_to_search_string(self):
         return self.to_text()
@@ -498,6 +498,7 @@ class FebIntent(FebObject):
 
         return parsed_result_dict, list(results_keys_set)
 
+    @property
     def results_to_entities(self):
         results_dict,results_keys = self.results_val_list_parse
         for results_key in results_keys:
@@ -516,8 +517,7 @@ class FebIntent(FebObject):
                 results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
             else:
                 results_dict[results_key] = [FebEntity(text_from_base=result_text) for result_text in results_val_list]
-        return results_dict
-
+        return results_dict, results_keys
 
 
 

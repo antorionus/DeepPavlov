@@ -53,14 +53,17 @@ class FebTextGenerator(FebComponent):
         """
 
         gen_context = {}
-        gen_context['params'] = [e.to_values_dict() for e in utt.entities]
+        gen_context['params'] = [e for e in utt.entities]  # [e.to_values_dict() for e in utt.entities]
 
         if len(utt.intents) > 0:
             # TODO: case of many intents
             intent = utt.intents[0]
             gen_context['query_name'] = intent.type
+            gen_context['log'] = log
             if intent.result_val:
-                gen_context['results'] = intent.result_val
+                results = intent.results_to_entities
+                gen_context['results'] = results[0]
+                gen_context['results_keys'] = results[1]
             else:
                 gen_context['results'] = [{'error': FebUtterance.ERROR_IN_RESULT}]
         else:
