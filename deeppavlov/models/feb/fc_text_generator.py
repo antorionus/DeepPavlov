@@ -65,10 +65,12 @@ class FebTextGenerator(FebComponent):
                 gen_context['results'] = results[0]
                 gen_context['results_keys'] = results[1]
             else:
-                gen_context['results'] = [{'error': FebUtterance.ERROR_IN_RESULT}]
+                gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+                gen_context['results_keys'] = ['error']
         else:
             gen_context['query_name'] = FebIntent.INTENT_NOT_SET_TYPE
-            gen_context['results'] = [{'error': FebUtterance.ERROR_IN_RESULT}]
+            gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+            gen_context['results_keys'] = ['error']
 
         # TODO:
         log.debug(f'---gen_context___\n\n{gen_context}\n')

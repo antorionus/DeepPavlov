@@ -4,7 +4,9 @@ import re
 import string
 # from question2wikidata.server_queries import queries
 from FictionEmpatBot.queries.question2wikidata.server_queries import queries
+from deeppavlov.core.common.log import get_logger
 
+log = get_logger(__name__)
 
 def var_dump(msg, header=''): print(f'-----{header}-----\n{msg}\n----\n')
 
@@ -377,7 +379,7 @@ class FebEntity(FebObject):
 
     def choose_correct_parse(self, parsed):
         correct_parse = None
-        if isinstance(self, FebAuthor):  # по типу вопрос
+        if isinstance(self, FebAuthor) or isinstance(self, FebChar):  # по типу вопрос
             for inx, parsed_word in enumerate(parsed):
                 grams = parsed_word.tag
                 if {'sing'} in grams:  # единственное число
@@ -393,8 +395,10 @@ class FebEntity(FebObject):
                     correct_parse = parsed[inx]
                     break
         if correct_parse is not None:
+            log.debug(f'---MorphAnalyzer___\n\n{correct_parse}\n')
             return correct_parse
         else:
+            log.debug(f'---MorphAnalyzer___\n\n{parsed[0]}\n')
             return parsed[0]
 
 
