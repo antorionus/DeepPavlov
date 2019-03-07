@@ -7,6 +7,11 @@
     "pipe": [
       {
         "in": ["x"],
+        "class_name": "deeppavlov.models.feb.recall_context:FebRecallContext",
+        "out": ["x_context"]
+      },
+      {
+        "in": ["x_context"],
         "class_name": "deeppavlov.models.feb.text_parser:FebTextParser",
         "out": ["x_val"]
       },
@@ -33,6 +38,11 @@
       {
         "in": ["x_result"],
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "out": ["x_result_1"]
+      },
+      {
+        "in": ["x_result_1"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
         "out": ["val_str"]
       }
     ],

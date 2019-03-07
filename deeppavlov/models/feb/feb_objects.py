@@ -2,7 +2,7 @@
 from razdel import sentenize, tokenize
 import re
 
-from question2wikidata.server_queries import queries
+ 
 
 
 
@@ -365,6 +365,7 @@ class FebUtterance(FebObject):
         self.entities = [] # list of entities
         self.intents = [] # list of intents
         self.re_text = None # responce text
+        self.chat_id = kwargs.get('chat_id', None)  #ID отправителя
 
     def to_dump(self):
         # return {k: [FebObject.recursive_json(item) for item in v if isinstance(item, (FebObject, FebError)) ] for k, v in self.__dict__.items() if v is not None }

@@ -13,7 +13,7 @@ from .feb_objects import *
 from question2wikidata.questions import pretty_json
 from time import time
 
-from ..feb import LOG_FILE, DEBUG
+from ..feb import LOG_FILE, DEBUG, CONTEXTS
 
 log = get_logger(__name__)
 
@@ -64,19 +64,22 @@ class FebComponent(Component):
     def __call__(self, batch, *args, **kwargs):
         start = time()
         res_batch = []
-        for in_obj in batch:
-
+        for in_obj in batch:            
             try:  # Error isolation between objects of batch
                 if self.component_type() == self.START_COMPONENT:
-                    if isinstance(in_obj, str):
-                        utt = FebUtterance(in_obj)
+                    message_text, chat_id = in_obj
+                    if isinstance(message_text, str):
+                        utt = FebUtterance(message_text, chat_id=chat_id)
+                        #Инициализация контекста пользователя
+                        # CONTEXTS[randint(1, 10000)] = ['some_context']
+                        # var_dump(header='INIT_CONTEXT', msg=CONTEXTS)
                     else:
                         utt = FebUtterance('')
                         # utt.add_error(FebError(FebError.ET_SYS, self, {FebError.EC_WRONG_TYPE: in_obj}))
-                        raise TypeError(f"start_component is not implemented for `{type(in_obj)}`")
+                        raise TypeError(f"start_component is not implemented for `{type(message_text)}`")
                 else:
                     utt = in_obj
-                # var_dump(in_obj)
+                
                 obj_l = self.test_and_prepare(utt)
                 ret_obj_l = []
                 # print(f'P1: obj_l={obj_l}, obj_t={type(obj_l)}')
@@ -103,7 +106,7 @@ class FebComponent(Component):
                 res_batch.append(utt.return_text())
                 dump = f'{utt.to_dump()}\n'
                 log.debug(dump)
-                # pretty_json(utt.to_dump())
+                pretty_json(utt.to_dump())
                 LOG_FILE.write(dump); LOG_FILE.flush()
             else:
                 res_batch.append(utt)

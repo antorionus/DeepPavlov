@@ -34,7 +34,7 @@ class FebTextGenerator(FebComponent):
       """
     @classmethod
     def component_type(cls):
-        return cls.FINAL_COMPONENT
+        return cls.INTERMEDIATE_COMPONENT
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -21,15 +21,16 @@ import re
 
 from .feb_objects import *
 from .feb_common import FebComponent
+from ..feb import CONTEXTS, MAX_REMEMBER_TIME
 
 from question2wikidata import questions, functions
-
+from datetime import datetime
 
 log = get_logger(__name__)
 
 
-@register('text_parser')
-class FebTextParser(FebComponent):
+@register('recall_context')
+class FebRecallContext(FebComponent):
     """Convert batch of strings
     sl = ["author_birthplace author Лев Николаевич Толстой",
       -(to)->
@@ -37,40 +38,25 @@ class FebTextParser(FebComponent):
       """
     @classmethod
     def component_type(cls):
-        return cls.INTERMEDIATE_COMPONENT
+        return cls.START_COMPONENT
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
     def test_and_prepare(self, utt):
-        question = utt.text
-
-        razdel_tokens = FebToken.tokenize(question)
-        # razdel_tokens = [t for t in tokens if t.type != FebToken.PUNCTUATION]
-        stemmer_tokens = FebToken.stemmer(question)
-
-        var_dump(header='razdel_tokens', msg = razdel_tokens)
-        var_dump(header='stemmer_tokens', msg = stemmer_tokens)
-
         
-        outer_index, inner_index = 0, 0
-        inner_shift = 0
-        for razdel_token in razdel_tokens:
-            for inner_index, stemmer_token in enumerate(stemmer_tokens):
-                if inner_index < inner_shift: continue
-                if razdel_token == stemmer_token:
-                    razdel_token.set_pos(stemmer_token.pos)
-                    razdel_token.set_normal_form(stemmer_token.normal_form)
-                    inner_shift = inner_index
-                    break
-            else:
-                razdel_token.set_pos('X')
-        var_dump(header='razdel_tokens with PoS', msg = razdel_tokens)           
+        var_dump(header='recall_context', msg='recall_context started!')
 
-        utt.tokens = razdel_tokens
-        
-        tokens = [t for t in utt.tokens if t.type != FebToken.PUNCTUATION]
+        chat_id = utt.chat_id
+        context = CONTEXTS.get(chat_id, None)
+        now = datetime.now().timestamp()
+
+        if context is not None and (now - context['timestamp']  > MAX_REMEMBER_TIME):
+            CONTEXTS.pop(chat_id, None)
+            context = None
+
+        var_dump(header='recall_context', msg=f'current context = {context}!')
+        var_dump(header='recall_context', msg=f'all contexts = {CONTEXTS}!')
 
         return [(utt, {})]
-

@@ -69,11 +69,11 @@ def init_bot_for_model(agent: Agent, token: str, model_name: str, proxy_key: str
     @bot.message_handler()
     def handle_inference(message):
         chat_id = message.chat.id
-        context = message.text
+        context = (message.text, chat_id)  #то, что идет на вход первому компоненту
         bot.send_chat_action(chat_id, 'typing')
         response: RichMessage = agent([context], [chat_id])[0]
         for message in response.json():
-            message_text = message['content']
+            message_text = message['content'] #то, что идет в ответ пользователю
             bot.send_message(chat_id, message_text)
 
     bot.polling()
