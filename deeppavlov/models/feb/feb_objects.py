@@ -1,49 +1,55 @@
-
+import pymorphy2 as pym
 from razdel import sentenize, tokenize
 import re
 
- 
+import string
+from question2wikidata.server_queries import queries
+# from FictionEmpatBot.queries.question2wikidata.server_queries import queries
+from deeppavlov.core.common.log import get_logger
+import requests
+
+log = get_logger(__name__)
+
+def var_dump(msg, header=''): print(f'-----{header}-----\n{msg}\n----\n')
 
 
-
-def var_dump(msg, header = ''): print(f'-----{header}-----\n{msg}\n----\n')
-def get_category(x): 
+def get_category(x):
     cats = ['book_author',
-        'book_written',
-        'book_published',
-        'book_characters',
-        'book_genre',
-        'book_main_theme',
-        'author_birthplace',
-        'author_productions',
-        'author_genres',
-        'author_when_born',
-        'author_where_lived',
-        'author_languages',
-        'author_when_died',
-        'author_where_died',
-        'author_where_buried',
-        'author_inspired_by']
-    for cat in cats: 
+            'book_written',
+            'book_published',
+            'book_characters',
+            'book_genre',
+            'book_main_theme',
+            'author_birthplace',
+            'author_productions',
+            'author_genres',
+            'author_when_born',
+            'author_where_lived',
+            'author_languages',
+            'author_when_died',
+            'author_where_died',
+            'author_where_buried',
+            'author_inspired_by']
+    for cat in cats:
         if cat in x:
             return cat
     else:
         return None
 
+
 class FebError(object):
+    ET = 'et_'  # error type
+    ET_SYS = 'et_sys_'  # system error
+    ET_LOG = 'et_log_'  # busyness logic error
+    ET_INP_DATA = 'et_log_inpdata_'  # input data check error
 
-    ET = 'et_' # error type
-    ET_SYS = 'et_sys_' # system error
-    ET_LOG = 'et_log_' # busyness logic error
-    ET_INP_DATA = 'et_log_inpdata_' # input data check error
-
-    EC = 'ec_' # error cause
+    EC = 'ec_'  # error cause
     EC_DATA = EC + 'data_'
-    EC_DATA_LACK = EC_DATA + 'lack_' # insufficient data
-    EC_DATA_NONE = EC_DATA_LACK + 'none_' # no value at all
-    EC_DATA_DISABIG = EC_DATA + 'disambiguation_' # there are two or more variants
-    EC_DATA_VAL = EC_DATA + 'val_' # wrong data value
-    EC_DATA_TYPE = EC_DATA + 'type_' # wrong data type
+    EC_DATA_LACK = EC_DATA + 'lack_'  # insufficient data
+    EC_DATA_NONE = EC_DATA_LACK + 'none_'  # no value at all
+    EC_DATA_DISABIG = EC_DATA + 'disambiguation_'  # there are two or more variants
+    EC_DATA_VAL = EC_DATA + 'val_'  # wrong data value
+    EC_DATA_TYPE = EC_DATA + 'type_'  # wrong data type
     EC_EXCEPTION = EC + 'exception_'
     EC_WRONG_TYPE = EC + 'wr'
 
@@ -53,7 +59,6 @@ class FebError(object):
         Check err_code_1 is special case (more detailed, i.e. longer) of err_code_2
         """
         return err_code_2.find(err_code_1, 0, len(err_code_1)) == 0
-
 
     def __init__(self, error_type, component, cause_d):
         """
@@ -72,15 +77,12 @@ class FebError(object):
         return f'{self.__class__.__name__}({vals})'
 
 
-
-
-
 class FebObject(object):
 
     def __init__(self, **kwargs):
         super().__init__()
         self.type = None  # object type
-        self.errors = [] # errors list
+        self.errors = []  # errors list
 
     def add_error(self, error):
         print(f'new error {error}')
@@ -93,7 +95,7 @@ class FebObject(object):
     def has_errors(self):
         return len(self.errors) != 0
 
-    @classmethod 
+    @classmethod
     def recursive_json(cls, obj):
         if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
             # print(obj, type(obj))
@@ -101,16 +103,16 @@ class FebObject(object):
         elif isinstance(obj, dict):
             # print(obj, type(obj))s
             props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
-            return {k: FebObject.recursive_json(v) for k, v in obj.items() if k not in props_to_cut }
+            return {k: FebObject.recursive_json(v) for k, v in obj.items() if k not in props_to_cut}
         elif isinstance(obj, FebObject) or isinstance(obj, FebError):
             # print(obj, type(obj))
             props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
-            return {k: FebObject.recursive_json(v) for k,v in obj.__dict__.items() if k not in props_to_cut }
+            return {k: FebObject.recursive_json(v) for k, v in obj.__dict__.items() if k not in props_to_cut}
         else:
             return obj
 
     IGNORE_IN_DUMP = {
-        'FebToken' : ['source_text'],
+        'FebToken': ['source_text'],
         # 'FebUtterance': ['re_text'],
         'FebIntent': ['confidence']
     }
@@ -131,10 +133,7 @@ class FebToken(FebObject):
     # Token tags:
     TAG_EOFS = 'tag_eofs'
     TAG_AUTHOR = 'tag_author'
-    TAG_BOOK = 'tag_book'   
-
-
-
+    TAG_BOOK = 'tag_book'
 
     @staticmethod
     def sentenize(text):
@@ -160,47 +159,44 @@ class FebToken(FebObject):
         else:
             return sent_tok_ll
 
-
     @staticmethod
     def stemmer(sentence):
         from pymystem3 import Mystem
         STEMMER = Mystem()
         pos_map = {
-                'A': 'ADJ',
-                'ADV': 'ADV',
-                'ADVPRO': 'ADV',
-                'ANUM': 'ADJ',
-                'APRO': 'DET',
-                'COM': 'ADJ',
-                'CONJ': 'SCONJ',
-                'INTJ': 'INTJ',
-                'NONLEX': 'X',
-                'NUM': 'NUM',
-                'PART': 'PART',
-                'PR': 'ADP',
-                'S': 'NOUN',
-                'SPRO': 'PRON',
-                'UNKN': 'X',
-                'V': 'VERB'
-            }
+            'A': 'ADJ',
+            'ADV': 'ADV',
+            'ADVPRO': 'ADV',
+            'ANUM': 'ADJ',
+            'APRO': 'DET',
+            'COM': 'ADJ',
+            'CONJ': 'SCONJ',
+            'INTJ': 'INTJ',
+            'NONLEX': 'X',
+            'NUM': 'NUM',
+            'PART': 'PART',
+            'PR': 'ADP',
+            'S': 'NOUN',
+            'SPRO': 'PRON',
+            'UNKN': 'X',
+            'V': 'VERB'
+        }
         processed = STEMMER.analyze(sentence)
         tagged = []
         for w in processed:
             try:
-                lemma = w["analysis"][0]["lex"].lower().strip()  
+                lemma = w["analysis"][0]["lex"].lower().strip()
                 text = w['text']
                 pos = w["analysis"][0]["gr"].split(',')[0]
                 pos = pos.split('=')[0].strip()
                 pos = pos_map.get(pos, 'X')
                 start = sentence.index(text)
                 stop = start + len(text)
-                token = FebToken(0, 0, text, normal_form = lemma, pos=pos)
+                token = FebToken(0, 0, text, normal_form=lemma, pos=pos)
                 tagged.append(token)
             except (KeyError, IndexError):
                 continue
         return tagged
-
-
 
     def __init__(self, start, stop, text, **kwargs):
         """
@@ -236,8 +232,9 @@ class FebToken(FebObject):
 
     def set_pos(self, pos):
         self.pos = pos
+
     def set_normal_form(self, normal_form):
-        self.normal_form = normal_form        
+        self.normal_form = normal_form
 
     def __repr__(self):
         vals = str(self)
@@ -252,14 +249,14 @@ class FebToken(FebObject):
         if self.tags:
             rs += f', tags={self.tags}'
         if self.pos:
-            rs += f', pos={self.pos}' 
+            rs += f', pos={self.pos}'
         if self.normal_form:
-            rs += f', normal_form={self.normal_form}'                       
+            rs += f', normal_form={self.normal_form}'
         rs += ')'
         return rs
+
     def __eq__(self, other):
         return self.text == other.text
-
 
 
 class FebEntity(FebObject):
@@ -267,19 +264,27 @@ class FebEntity(FebObject):
     # types:
     AUTHOR = 'author'
     BOOK = 'book'
+    GEOX = 'place'
+    DATE = 'date'
+    CHAR = 'char'
+    OTHERS = 'others'
+    GROUPING_SPACE_REGEX = re.compile('([^\w_\-\']|[+])', re.U)
+    PUNCTATION_REGEX = re.compile('([^\w]|[+])', re.U)
+    # TYPE_REGEX = re.compile('^(\w+(_characters|_author|_inspired_by))|author_name|author$')
+    MORPH = pym.MorphAnalyzer()
 
-    def __init__(self, type,  **kwargs):
+    def __init__(self, type, **kwargs):
         super().__init__(**kwargs)
         self.type = type
-        self.tokens = kwargs.get('tokens', None) # list of tokens
-        self.qid = kwargs.get('qid', None) # id in Wikidata
-        self.qname = kwargs.get('qname', None) # name in Wikidata
+        self.tokens = kwargs.get('tokens', None)  # list of tokens
+        self.qid = kwargs.get('qid', None)  # id in Wikidata
+        self.qname = kwargs.get('qname', None)  # name in Wikidata
         self.normal_form = kwargs.get('normal_form', None)
         self.text_from_base = kwargs.get('text_from_base', None)
-
+        self.rollback_normal_form_capitalization()
 
     def to_text(self):
-        return ' '.join(t.text for t in self.tokens)
+        return ' '.join(t.text for t in self.tokens)  # todo rollback "t.text" from t['text']
 
     def tokens_to_search_string(self):
         return self.to_text()
@@ -294,16 +299,145 @@ class FebEntity(FebObject):
         }
         return res_dict
 
+    @property
+    def nomn(self):
+        return self.inflect_string('nomn')
+
+    @property
+    def gent(self):
+        return self.inflect_string('gent')
+
+    @property
+    def datv(self):
+        return self.inflect_string('datv')
+
+    @property
+    def accs(self):
+        return self.inflect_string('accs')
+
+    @property
+    def ablt(self):
+        return self.inflect_string('ablt')
+
+    @property
+    def loct(self):
+        return self.inflect_string('loct')
+
+    def inflect_string(self, case):
+        output_string = ''
+        for token in self.simple_word_tokenize(self.text_from_base if self.text_from_base else self.normal_form):
+            if token in string.punctuation or token.isspace():
+                output_string = output_string + token  # ['О', "'", 'Нил', ',', 'Юджин', 'dsasa-dasdsa']
+                continue
+
+            correct_parse = self.choose_correct_parse(self.MORPH.parse(token))
+
+            cased_tag = correct_parse.inflect({case})
+            if not cased_tag:
+                output_string = output_string + token
+                continue
+
+            cased_word = cased_tag.word
+            output_string = output_string + cased_word
+        output_string = self.rollback_string_capitalization(self.text_from_base if self.text_from_base else self.normal_form, output_string)
+        return output_string
+
+    def simple_word_tokenize(self, str):
+        return [t for t in self.GROUPING_SPACE_REGEX.split(str)]
+
+    @staticmethod
+    def rollback_capitaliztion_from_text(str, new_string):
+        text_tokens_list = re.sub("[^\w_]", " ", str).split()
+        new_string_tokens_list = re.sub("[^\w_]", " ", new_string).split()
+        for index, token in enumerate(text_tokens_list):
+            if token[0].isupper():
+                normal_form_right_cap = new_string_tokens_list[index][:1].upper() + new_string_tokens_list[index][1:]
+                new_string_tokens_list[index] = normal_form_right_cap
+                continue
+        return ' '.join(new_string_tokens_list)
+
+    def rollback_string_capitalization(self, str, new_string):
+        string_tokenized = [t for t in self.PUNCTATION_REGEX.split(str)]
+        new_string_tokenized = [t for t in self.PUNCTATION_REGEX.split(new_string)]
+        correct_capitalized_string = ''
+        if len(string_tokenized) != len(new_string_tokenized):  # нормальная форма не совпадает по пунктуации с текст
+            return self.rollback_capitaliztion_from_text(str, new_string)
+        else:
+            for index, token in enumerate(string_tokenized):
+                if token in string.punctuation or token.isspace():
+                    correct_capitalized_string = correct_capitalized_string + token
+                    continue
+                if token[0].isupper():
+                    correct_capitalized_string = correct_capitalized_string + new_string_tokenized[index][:1].upper() + \
+                                           new_string_tokenized[index][1:]
+                    continue
+                else:
+                    correct_capitalized_string = correct_capitalized_string + new_string_tokenized[index]
+        return correct_capitalized_string
+
+    def rollback_normal_form_capitalization(self):
+        self.normal_form = self.rollback_string_capitalization(self.to_text(),self.normal_form) \
+            if self.normal_form and self.tokens else self.normal_form
+
+    def choose_correct_parse(self, parsed):
+        correct_parse = None
+        if isinstance(self, FebAuthor) or isinstance(self, FebChar):  # по типу вопрос
+            for inx, parsed_word in enumerate(parsed):
+                grams = parsed_word.tag
+                if {'sing'} in grams:  # единственное число
+                    if {'Name'} in grams or {'Surn'} in grams or {'Patr'} in grams or {'UNKN'} in grams:
+                        correct_parse = parsed[inx]
+                        break
+        elif isinstance(self,FebBook):  # todo elif isinstance(self, FebGeox)
+            correct_parse = parsed[0]
+        else:
+            for inx, found_word in enumerate(parsed):
+                grams = found_word.tag
+                if not {'Surn'} in grams and not {'Name'} in grams and not {'Patr'} in grams:
+                    correct_parse = parsed[inx]
+                    break
+        if correct_parse is not None:
+            # log.debug(f'---MorphAnalyzer___\n\n{correct_parse}\n')
+            return correct_parse
+        else:
+            # log.debug(f'---MorphAnalyzer___\n\n{parsed[0]}\n')
+            return parsed[0]
+
+
 class FebAuthor(FebEntity):
 
-    def __init__(self,  **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(FebEntity.AUTHOR, **kwargs)
 
 
 class FebBook(FebEntity):
 
-    def __init__(self,  **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(FebEntity.BOOK, **kwargs)
+
+
+class FebGeox(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.GEOX, **kwargs)
+
+
+class FebDate(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.DATE, **kwargs)
+
+class FebChar(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.CHAR, **kwargs)
+
+
+class FebOthers(FebEntity):
+
+    def __init__(self, **kwargs):
+        super().__init__(FebEntity.OTHERS, **kwargs)
+
 
 class FebIntent(FebObject):
     """
@@ -334,14 +468,14 @@ class FebIntent(FebObject):
     def in_supported_types(cls, type):
         return type in cls.supported_types
 
-    def __init__(self, type,  **kwargs):
+    def __init__(self, type, **kwargs):
         super().__init__(**kwargs)
 
         self.type = type
-        self.confidence = kwargs.get('confidence', 0.0) # float confidence level
+        self.confidence = kwargs.get('confidence', 0.0)  # float confidence level
 
-        self.result_qid = kwargs.get('result_qid', None) # result id in Wikidata
-        self.result_val = kwargs.get('result_str', None) # result dict
+        self.result_qid = kwargs.get('result_qid', None)  # result id in Wikidata
+        self.result_val = kwargs.get('result_val', None)  # result dict todo was 'result_str'
         # self.result_str = kwargs.get('result_str', None) # result string type
 
     @property
@@ -352,27 +486,65 @@ class FebIntent(FebObject):
         """
         return str(self.result_val)
 
+    @property
+    def results_val_list_parse(self):
+        results_keys_set = set([list(result.keys())[0] for result in self.result_val])
+        parsed_result_dict = {}
+        for result_key in results_keys_set:
+            values_with_same_key_list = []
+            for result in self.result_val:
+                try:
+                    value = result[result_key]
+                except KeyError:
+                    continue
+                else:
+                    values_with_same_key_list.append(value)
+
+            parsed_result_dict[result_key] = values_with_same_key_list
+
+        return parsed_result_dict, list(results_keys_set)
+
+    @property
+    def results_to_entities(self):
+        results_dict,results_keys = self.results_val_list_parse
+        for results_key in results_keys:
+            results_val_list = results_dict[results_key]
+            if results_key == 'authorLabel':
+                results_dict[results_key] = [FebAuthor(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'bookLabel':
+                results_dict[results_key] = [FebBook(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'placeLabel':
+                results_dict[results_key] = [FebGeox(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'years':
+                results_dict[results_key] = [FebDate(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key == 'charsLabel':
+                results_dict[results_key] = [FebChar(text_from_base=result_text) for result_text in results_val_list]
+            elif results_key in ('langLabel', 'genreLabel','subjLabel'):
+                results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
+            else:
+                results_dict[results_key] = [FebEntity(text_from_base=result_text) for result_text in results_val_list]
+        return results_dict, results_keys
+
+
+
 
 class FebUtterance(FebObject):
-
     ERROR_IN_RESULT = 'error_in_result'
 
     def __init__(self, text, **kwargs):
         super().__init__(**kwargs)
 
-        self.text = text # input text
-        self.tokens = None # list of tokens
-        self.entities = [] # list of entities
-        self.intents = [] # list of intents
-        self.re_text = None # responce text
+        self.text = text  # input text
+        self.get_suggested_text_from_yandex_speller()
+        self.tokens = None  # list of tokens
+        self.entities = []  # list of entities
+        self.intents = []  # list of intents
+        self.re_text = None  # responce text
         self.chat_id = kwargs.get('chat_id', None)  #ID отправителя
 
     def to_dump(self):
         # return {k: [FebObject.recursive_json(item) for item in v if isinstance(item, (FebObject, FebError)) ] for k, v in self.__dict__.items() if v is not None }
         return {k: FebObject.recursive_json(v) for k, v in self.__dict__.items() if v is not None}
-
-
-
 
     def return_text(self):
         if self.re_text:
@@ -380,4 +552,26 @@ class FebUtterance(FebObject):
         else:
             return 'Что-то пошло не так, попробуйте еще раз.'
 
+    def get_suggested_text_from_yandex_speller(self):
+        response = self.request_spell_check()
+        text_copy = self.text
+        if response and len(response.json()) != 0:
+            errors_list = response.json()
+            for error in errors_list:
+                if error['s'] is not None or len(error['s']) != 0:
+                    self.text = self.text.replace(error['word'], error['s'][0])
+            log.debug(f'---yandexspeller___\n\nErrors found, right text:   {self.text}\n \t Old text: {text_copy}')
+        else:
+            log.debug(f'---yandexspeller___\n\nNo errors found or yandex_speller failure:   {self.text}\n')
+            self.text = self.text
 
+    def request_spell_check(self):
+        response = requests.get('https://speller.yandex.net/services/spellservice.json/checkText',
+                                params={'text': self.text})
+        if response.status_code == 200:
+            if response is None:
+                return None
+            else:
+                return response
+        else:
+            return None
