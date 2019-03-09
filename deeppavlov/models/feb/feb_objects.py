@@ -36,6 +36,10 @@ def get_category(x):
     else:
         return None
 
+class FebStopBranch(object):
+    STOP = 'FebStopBranch.STOP'
+    CONTINUE = 'FebStopBranch.CONTINUE'
+    pass
 
 class FebError(object):
     ET = 'et_'  # error type
