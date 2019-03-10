@@ -95,7 +95,9 @@ class FebNER(FebComponent):
                             token.tags.update({FebToken.TAG_AUTHOR})
                             entity_tokens.append(token)
                     normal_form = author_tokens['normal_form']
-                    utt.entities.append(FebAuthor(tokens=entity_tokens, normal_form=normal_form))
+                    utt.entities.append(FebAuthor(tokens=entity_tokens, normal_form=normal_form,
+                                                  first=author_tokens['first'],middle=author_tokens['middle'],
+                                                  last=author_tokens['last']))
                 # normal_form = entities['author_name'][0]['normal_form']
         if ('book_name' in entities):
             for book_tokens in entities['book_name']:
