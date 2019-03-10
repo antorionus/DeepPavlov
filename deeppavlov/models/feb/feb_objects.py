@@ -13,30 +13,6 @@ log = get_logger(__name__)
 def var_dump(msg, header=''): print(f'-----{header}-----\n{msg}\n----\n')
 
 
-def get_category(x):
-    cats = ['book_author',
-            'book_written',
-            'book_published',
-            'book_characters',
-            'book_genre',
-            'book_main_theme',
-            'author_birthplace',
-            'author_productions',
-            'author_genres',
-            'author_when_born',
-            'author_where_lived',
-            'author_languages',
-            'author_when_died',
-            'author_where_died',
-            'author_where_buried',
-            'author_inspired_by']
-    for cat in cats:
-        if cat in x:
-            return cat
-    else:
-        return None
-
-
 class FebError(object):
     ET = 'et_'  # error type
     ET_SYS = 'et_sys_'  # system error

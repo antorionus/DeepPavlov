@@ -20,7 +20,7 @@
         "class_name": "deeppavlov.models.feb.ner:FebNER",
         "out": ["x_val_1"]
       },
-          {
+      {
         "in": ["x_val_1"],
         "class_name": "deeppavlov.models.feb.intent_classifier:IntentClassifier",
         "out": ["x_val_2"]

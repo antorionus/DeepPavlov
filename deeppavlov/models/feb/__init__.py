@@ -3,7 +3,8 @@ __all__ = ['feb_common', 'nent_to_qent', 't1_parser', 't1_text_generator']
 
 
 #Предзагрузка для модуля NER
-from question2wikidata.extractors import title
+# import question2wikidata.questions
+from ner.extractors import title
 BOOK_NAMES_EXTRACTOR = title.titleExtractor()
 
 #Файл для логирования
