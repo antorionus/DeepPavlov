@@ -92,7 +92,13 @@ class FebComponent(Component):
                         ret_obj_l.append(obj)
                     else:
                         ret_obj_l.append(ret_obj)
-                utt = self.pack_result(utt, ret_obj_l)
+                pack_result = self.pack_result(utt, ret_obj_l)
+                if type(pack_result) in {list, tuple}:
+                    utt, stop_continue = pack_result
+                else:
+                    # usual case (reverse compatibility)
+                    utt = pack_result
+                    stop_continue = None
                 # TODO: dump data:
                 # log.info(f'DATA DUMP utt=`{utt}`')
                 if DEBUG:
@@ -102,6 +108,8 @@ class FebComponent(Component):
             except Exception as e:
                 log.exception(f'in UTT process(utt=`{utt}`)')
                 utt.add_error(FebError(FebError.ET_SYS, self, {FebError.EC_EXCEPTION: e}))
+                # TODO: correctly init stop_continue
+                stop_continue = None
             if self.component_type() == self.FINAL_COMPONENT:
                 res_batch.append(utt.return_text())
                 dump = f'{utt.to_dump()}\n'
@@ -109,6 +117,11 @@ class FebComponent(Component):
                 pretty_json(utt.to_dump())
                 LOG_FILE.write(dump); LOG_FILE.flush()
             else:
+                if stop_continue:
+                    res_batch.append(tuple(FebStopBranch() if sc is FebStopBranch.STOP else utt
+                                           for sc in stop_continue))
+                else:
+                    res_batch.append(utt)
                 res_batch.append(utt)
         finish = time()
         taken = finish - start

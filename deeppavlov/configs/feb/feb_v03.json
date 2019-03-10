@@ -1,0 +1,161 @@
+{
+  "dataset_reader": {},
+  "dataset_iterator": {},
+  "chainer": {
+    "in": ["x"],
+    "in_y": ["y"],
+    "pipe": [
+      {
+        "in": ["x"],
+        "class_name": "deeppavlov.models.feb.recall_context:FebRecallContext",
+        "out": ["utt_new", "utt_wnw"]
+      },
+
+      {
+        "in": ["utt_wnw"],
+        "class_name": "deeppavlov.models.feb.text_parser:FebTextParser",
+        "out": ["parsed_wnw"]
+      },
+      {
+        "in": ["parsed_wnw"],
+        "class_name": "deeppavlov.models.feb.intent_classifier:IntentClassifier",
+        "classifier_type": "want_not_want",
+        "out": ["int_wnw_yes", "int_wnw_no", "parsed_new #case: int_wnw_negative"]
+      },
+      {
+        "in": ["int_wnw_yes"],
+        "class_name": "deeppavlov.models.feb.fc_load_answer:FebLoadAnswer",
+        "out": ["book_query_result"]
+      },
+
+
+
+
+      {
+        "in": ["utt_new"],
+        "class_name": "deeppavlov.models.feb.text_parser:FebTextParser",
+        "out": ["parsed_new"]
+      },
+      {
+        "in": ["parsed_new"],
+        "class_name": "deeppavlov.models.feb.ner:FebNER",
+        "out": ["ner_new"]
+      },
+      {
+        "in": ["ner_new"],
+        "class_name": "deeppavlov.models.feb.intent_classifier:IntentClassifier",
+        "classifier_type": "16_book_questions",
+        "out": ["int_bookq", "int_book_negative"]
+      },
+      {
+        "in": ["int_bookq"],
+        "class_name": "deeppavlov.models.feb.nent_to_qent:NentToQent",
+        "out": ["identified_bookq"]
+      },
+      {
+        "in": ["identified_bookq"],
+        "class_name": "deeppavlov.models.feb.wikidata_query:WikidataQuery",
+        "out": ["book_query_result", "book_query_error"]
+      },
+      {
+        "in": ["book_query_result"],
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "templates": "book_query_result",
+        "out": ["result_string_ok"]
+      },
+      {
+        "in": ["result_string_ok"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
+        "save_context": false,
+        "out": ["val_str"]
+      },
+
+
+      {
+        "in": ["book_query_error"],
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "templates": "book_query_error",
+        "out": ["error_string"]
+      },
+      {
+        "in": ["book_query_error"],
+        "class_name": "deeppavlov.models.feb.fc_find_alternative:FebAlternativeAnswer #NEW COMPONENT",
+        "templates": "book_query_error",
+        "out": ["alternative_answer", "error_string2"]
+      },
+      {
+        "in": ["alternative_answer"],
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "templates": "alternative_answer",
+        "out": ["alternative_string"]
+      },
+      {
+        "in": ["error_string", "alternative_string"],
+        "class_name": "deeppavlov.models.feb.fc_concatenate_strings:FebTextConcatenator #NEW COMPONENT",
+        "out": ["result_string_alternative"]
+      },
+      {
+        "in": ["result_string_alternative"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
+        "save_context": true,
+        "context_definition": "alternative_answer",
+        "out": ["val_str"]
+      },
+      {
+        "in": ["error_string", "error_string2"],
+        "class_name": "deeppavlov.models.feb.fc_concatenate_strings:FebTextConcatenator #NEW COMPONENT",
+        "out": ["result_string_error"]
+      },
+      {
+        "in": ["result_string_error"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
+        "save_context": false,
+        "out": ["val_str"]
+      },
+
+
+      {
+        "in": ["int_book_negative"],
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "templates": "int_book_negative",
+        "out": ["result_string_negative"]
+      },
+      {
+        "in": ["result_string_negative"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
+        "save_context": false,
+        "out": ["val_str"]
+      },
+
+      {
+        "in": ["int_wnw_no"],
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "templates": "int_wnw_no",
+        "out": ["result_wnw_no"]
+      },
+      {
+        "in": ["result_wnw_no"],
+        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
+        "save_context": false,
+        "out": ["val_str"]
+      }
+
+    ],
+    "out": ["val_str"]
+  },
+  "train": {},
+  "metadata": {
+    "variables": {
+      "ROOT_PATH": "~/.deeppavlov",
+      "DOWNLOADS_PATH": "{ROOT_PATH}/downloads",
+      "MODELS_PATH": "{ROOT_PATH}/models",
+      "CONFIGS_PATH": "{DEEPPAVLOV_PATH}/configs"
+    },
+    "requirements": [],
+    "labels": {
+      "telegram_utils": "feb_test1_bot_label",
+      "server_utils": "feb_test1_bot_label"
+    },
+    "download": []
+  }
+}

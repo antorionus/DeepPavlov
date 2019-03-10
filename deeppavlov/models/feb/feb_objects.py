@@ -13,6 +13,11 @@ log = get_logger(__name__)
 def var_dump(msg, header=''): print(f'-----{header}-----\n{msg}\n----\n')
 
 
+class FebStopBranch(object):
+    STOP = 'FebStopBranch.STOP'
+    CONTINUE = 'FebStopBranch.CONTINUE'
+    pass
+
 class FebError(object):
     ET = 'et_'  # error type
     ET_SYS = 'et_sys_'  # system error
