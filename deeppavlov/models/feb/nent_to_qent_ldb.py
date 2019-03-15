@@ -56,7 +56,10 @@ class NentToQent(FebComponent):
         :param context: void dict
         :return: None (all results saved in place (for arguments))
         """
-        entity.qid, entity.text_from_base = functions.get_qid_with_label(entity.normal_form, entity.type)
+        entity.qid, entity.id, entity.text_from_base = functions.get_id_with_label(entity.normal_form, param_type=entity.type,
+                                                                                   first=entity.first, middle=entity.middle,
+                                                                                   last=entity.last)
+        # entity.qid, entity.text_from_base = functions.get_qid_with_label(entity.normal_form, entity.type)
         return entity
 
 
@@ -92,3 +95,4 @@ class NentToQent(FebComponent):
     #     qid = functions.get_qid(ne_str, param_type)
     #     log.info(f'nent_to_qent _extract_entities qid={qid}')
     #     return qid
+
