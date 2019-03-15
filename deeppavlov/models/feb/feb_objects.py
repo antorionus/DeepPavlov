@@ -259,10 +259,14 @@ class FebEntity(FebObject):
         super().__init__(**kwargs)
         self.type = type
         self.tokens = kwargs.get('tokens', None)  # list of tokens
+        self.id = kwargs.get('id', None)
         self.qid = kwargs.get('qid', None)  # id in Wikidata
         self.qname = kwargs.get('qname', None)  # name in Wikidata
         self.normal_form = kwargs.get('normal_form', None)
         self.text_from_base = kwargs.get('text_from_base', None)
+        self.first = kwargs.get('first', None)
+        self.middle = kwargs.get('middle', None)
+        self.last = kwargs.get('last', None)
         self.rollback_normal_form_capitalization()
 
     def to_text(self):
@@ -492,15 +496,15 @@ class FebIntent(FebObject):
         results_dict,results_keys = self.results_val_list_parse
         for results_key in results_keys:
             results_val_list = results_dict[results_key]
-            if results_key == 'authorLabel':
+            if results_key in ('authorLabel','authorlabel') :
                 results_dict[results_key] = [FebAuthor(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key == 'bookLabel':
+            elif results_key in ('bookLabel','booklabel'):
                 results_dict[results_key] = [FebBook(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key == 'placeLabel':
+            elif results_key in ('placeLabel','placelabel'):
                 results_dict[results_key] = [FebGeox(text_from_base=result_text) for result_text in results_val_list]
             elif results_key == 'years':
                 results_dict[results_key] = [FebDate(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key == 'charsLabel':
+            elif results_key == ('charsLabel','charslabel'):
                 results_dict[results_key] = [FebChar(text_from_base=result_text) for result_text in results_val_list]
             elif results_key in ('langLabel', 'genreLabel','subjLabel'):
                 results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]

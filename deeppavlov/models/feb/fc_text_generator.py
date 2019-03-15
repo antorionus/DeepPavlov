@@ -63,7 +63,7 @@ class FebTextGenerator(FebComponent):
         params_list = gen_context['params']
         results_dict = gen_context['results']
 
-        pattern_type = eval(self.pattern_type_path) or ''
+        pattern_type = eval(self.pattern_type_path) if self.pattern_type_path else ''
         var_dump(header='FebTextGenerator', msg=f'pattern_type={pattern_type}')
         template_to_find = f'{self.template}{pattern_type}' if self.template else None
 
