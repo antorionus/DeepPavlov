@@ -56,11 +56,9 @@ class WikidataQuery(FebComponent):
         :return: None (all results saved in place (for arguments))
         """
         entities = context['entities'] # list of FebEntity
-        print(entities)
         if not intent.has_errors():
             # algorithm support only one parameter of certain type!
             query = queries[intent.type]['query']
-            print(query)
             query_params = {}
             errors = False
             for param_name, param_type in queries[intent.type]['params'].items():
@@ -68,17 +66,9 @@ class WikidataQuery(FebComponent):
                 # disambiguation problem!
                 # filtering ent with qid != None:
                 qid_l = [ent.qid for ent in ent_l if ent.qid]
-                id_l = [ent.id for ent in ent_l if ent.id]
-                print(qid_l)
-                print(id_l)
-                if len(qid_l) == 1 and len(id_l) == 1:
-                    query_params[param_name] = (qid_l[0], id_l[0])
-                elif len(qid_l) == 0 and len(id_l) == 1:
-                    query_params[param_name] = (None, id_l[0])
-                elif len(qid_l) == 1 and len(id_l) == 0:
-                    query_params[param_name] = (qid_l[0], None)
-
-                elif len(qid_l) == 0 and len(id_l) == 0:
+                if len(qid_l) == 1:
+                    query_params[param_name] = qid_l[0]
+                elif len(qid_l) == 0:
                     intent.add_error(FebError(FebError.ET_INP_DATA, self, {FebError.EC_DATA_NONE:
                                                                                {'param_name': param_name,
                                                                                 'param_type': param_type}}))
@@ -87,11 +77,10 @@ class WikidataQuery(FebComponent):
                     intent.add_error(FebError(FebError.ET_INP_DATA, self, {FebError.EC_DATA_DISABIG:
                                                                                {'param_name': param_name,
                                                                                 'param_type': param_type,
-                                                                                'entities': (ent_l,id_l)}}))
+                                                                                'entities': ent_l}}))
                     errors = True
-            print('qparams', query_params)
             if not errors:
-                intent.result_val = functions.execute_query_sql(query, **query_params)
+                intent.result_val = functions.execute_query(query, **query_params)
             # intent.result_str = str()
         return intent
 
