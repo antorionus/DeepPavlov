@@ -29,7 +29,7 @@ from question2wikidata import questions, functions
 log = get_logger(__name__)
 
 
-@register('nent_to_qent')
+@register('fc_nent_to_qent')
 class NentToQent(FebComponent):
     """Convert batch of strings
       """

@@ -30,7 +30,7 @@ from ..feb import BOOK_NAMES_EXTRACTOR
 log = get_logger(__name__)
 
 
-@register('ner')
+@register('fc_ner')
 class FebNER(FebComponent):
     """Convert batch of strings
     sl = ["author_birthplace author Лев Николаевич Толстой",

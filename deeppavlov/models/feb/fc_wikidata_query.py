@@ -28,7 +28,7 @@ from question2wikidata.server_queries import queries
 log = get_logger(__name__)
 
 
-@register('wikiddata_query')
+@register('fc_wikiddata_query')
 class WikidataQuery(FebComponent):
     """Convert batch of strings
       """
@@ -80,6 +80,7 @@ class WikidataQuery(FebComponent):
                                                                                 'entities': ent_l}}))
                     errors = True
             if not errors:
+                var_dump(header = 'wikidata_query', msg = f'query = {query}, **query_params = {query_params}')
                 intent.result_val = functions.execute_query(query, **query_params)
             # intent.result_str = str()
         return intent
@@ -91,8 +92,16 @@ class WikidataQuery(FebComponent):
         :param ret_obj_l: list of entities
         :return: utt with list of updated intents
         """
+        var_dump(header='wikidata_query pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
         utt.intents = ret_obj_l
-        return utt
+
+        if 'error' in utt.get_gen_context()['results_keys']:
+        # if len(utt.intents[0].errors):
+            return FebStopBranch.STOP, [utt]
+        else:
+            return [utt], FebStopBranch.STOP
+        
+        # return utt, FebStopBranch.STOP
 
 
     # @overrides

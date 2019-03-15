@@ -60,10 +60,16 @@ class FebComponent(Component):
     def __init__(self, **kwargs):
         super().__init__()
 
+
+    def __repr__(self):
+        vals = ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())
+        return f'{self.__class__.__name__}({vals})'
+
     @overrides
     def __call__(self, batch, *args, **kwargs):
         start = time()
         res_batch = []
+        var_dump(header=f'__call__ batch in {self.__class__.__name__}', msg=f'batch = {batch}, \n args = {args}, \n kwargs={kwargs}')
         for in_obj in batch:            
             try:  # Error isolation between objects of batch
                 if self.component_type() == self.START_COMPONENT:
@@ -94,11 +100,11 @@ class FebComponent(Component):
                         ret_obj_l.append(ret_obj)
                 pack_result = self.pack_result(utt, ret_obj_l)
                 if type(pack_result) in {list, tuple}:
-                    utt, stop_continue = pack_result
+                    multiple_pack_results = pack_result
                 else:
                     # usual case (reverse compatibility)
                     utt = pack_result
-                    stop_continue = None
+                    multiple_pack_results = None
                 # TODO: dump data:
                 # log.info(f'DATA DUMP utt=`{utt}`')
                 if DEBUG:
@@ -109,7 +115,7 @@ class FebComponent(Component):
                 log.exception(f'in UTT process(utt=`{utt}`)')
                 utt.add_error(FebError(FebError.ET_SYS, self, {FebError.EC_EXCEPTION: e}))
                 # TODO: correctly init stop_continue
-                stop_continue = None
+                multiple_pack_results = None
             if self.component_type() == self.FINAL_COMPONENT:
                 res_batch.append(utt.return_text())
                 dump = f'{utt.to_dump()}\n'
@@ -117,12 +123,12 @@ class FebComponent(Component):
                 pretty_json(utt.to_dump())
                 LOG_FILE.write(dump); LOG_FILE.flush()
             else:
-                if stop_continue:
-                    res_batch.append(tuple(FebStopBranch() if sc is FebStopBranch.STOP else utt
-                                           for sc in stop_continue))
+                if multiple_pack_results:
+                    # var_dump(header='COMMON', msg = f'to res_batch = {multiple_pack_results}')
+                    # for _ in multiple_pack_results: res_batch.append(_)
+                    res_batch.extend(multiple_pack_results)
                 else:
                     res_batch.append(utt)
-                res_batch.append(utt)
         finish = time()
         taken = finish - start
         FebComponent.TIME_TAKEN += taken

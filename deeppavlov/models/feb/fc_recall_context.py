@@ -18,39 +18,50 @@ from deeppavlov.core.common.registry import register
 from deeppavlov.core.models.component import Component
 from deeppavlov.core.common.log import get_logger
 import re
-import answers
-
 
 from .feb_objects import *
 from .feb_common import FebComponent
-from ..feb import CONTEXTS
+from ..feb import CONTEXTS, MAX_REMEMBER_TIME
 
+from question2wikidata import questions, functions
 from datetime import datetime
-
 
 log = get_logger(__name__)
 
 
-@register('feb_memorize_context')
-class FebMemorizeContext(FebComponent):
-    """Convert utt to strings
+@register('fc_recall_context')
+class FebRecallContext(FebComponent):
+    """Convert batch of strings
+    sl = ["author_birthplace author Лев Николаевич Толстой",
+      -(to)->
+        utterence object
       """
     @classmethod
     def component_type(cls):
-        return cls.FINAL_COMPONENT
+        return cls.START_COMPONENT
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    # don't override basic realization
-    # def test_and_prepare(self, utt):
+
     def test_and_prepare(self, utt):
         
-        var_dump(header='memorize_context', msg='memorize_context started!')
+        var_dump(header='recall_context', msg='recall_context started!')
 
         chat_id = utt.chat_id
-        current_timestamp = datetime.now().timestamp()
+        context = CONTEXTS.get(chat_id, None)
+        now = datetime.now().timestamp()
 
-        CONTEXTS[chat_id] = {'timestamp': current_timestamp, 'context': 'Some Context...'}
+        if context is not None and (now - context['timestamp']  > MAX_REMEMBER_TIME):
+            CONTEXTS.pop(chat_id, None)
+            context = None
+
+        var_dump(header='recall_context', msg=f'current context = {context}!')
+        var_dump(header='recall_context', msg=f'all contexts = {CONTEXTS}!')
 
         return [(utt, {})]
+
+    def pack_result(self, utt, ret_obj_l):
+        
+        var_dump(header='RecallContext', msg=f'ret_obj_l={ret_obj_l}, FebStopBranch() = {FebStopBranch()}')
+        return ret_obj_l, FebStopBranch.STOP

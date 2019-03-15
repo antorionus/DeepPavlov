@@ -13,13 +13,23 @@
 # limitations under the License.
 
 import pickle
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Dict
 
 from deeppavlov.core.common.errors import ConfigError
 from deeppavlov.core.models.component import Component
 from deeppavlov.core.models.nn_model import NNModel
 from deeppavlov.core.models.serializable import Serializable
 
+from deeppavlov.models.feb.feb_common import FebComponent
+from deeppavlov.models.feb.feb_objects import FebStopBranch
+
+# class FebStopBranch(object):
+#     STOP = 'FebStopBranch.STOP'
+#     CONTINUE = 'FebStopBranch.CONTINUE'
+#     pass
+
+
+def var_dump(msg, header=''): print(f'-----{header}-----\n{msg}\n----\n')
 
 class Chainer(Component):
     """
@@ -69,7 +79,6 @@ class Chainer(Component):
         if isinstance(out_params, str):
             out_params = [out_params]
         in_x = in_x or self.in_x
-
         if isinstance(in_x, dict):
             x_keys, in_x = zip(*in_x.items())
         else:
@@ -144,34 +153,105 @@ class Chainer(Component):
 
     @staticmethod
     def _compute(*args, param_names, pipe, targets):
-        expected = set(targets)
+        #Срабатывает после отправки сообщения из TG
+        var_dump(header='Параметры на входе', msg = f'args = {args},\n param_names={param_names},\n pipe={pipe},\n targets={targets}\n')
+        # expected = set(targets)
         final_pipe = []
         for (in_keys, in_params), out_params, component in reversed(pipe):
-            if expected.intersection(out_params):
-                expected = expected - set(out_params) | set(in_params)
+            if not isinstance(component, FebComponent):
+                raise RuntimeError(f'Поддерживаются только компоненты FebComponent')
+                # break
+            else:
                 final_pipe.append(((in_keys, in_params), out_params, component))
+            # if expected.intersection(out_params):
+            #     expected = expected - set(out_params) | set(in_params)
+            #     final_pipe.append(((in_keys, in_params), out_params, component))
+            #     var_dump(header='_COMPUTE', msg=f'Component {component} added!')
+            # else:
+            #     var_dump(header='_COMPUTE', msg=f'Component {component} not added!')
         final_pipe.reverse()
-        if not expected.issubset(param_names):
-            raise RuntimeError(f'{expected} are required to compute {targets} but were not found in memory or inputs')
+        # if not expected.issubset(param_names):
+        #     raise RuntimeError(f'{expected} are required to compute {targets} but were not found in memory or inputs')
         pipe = final_pipe
 
         mem = dict(zip(param_names, args))
         del args
+        var_dump(header = '_COMPUTE', msg=f'Final PIPE = {pipe}')
 
-        for (in_keys, in_params), out_params, component in pipe:
+        chainer_iter_num = 1
+
+        components_done = []
+
+        while not set(targets).issubset(set(mem.keys())): # пока не получим результат выходного параметра
+            for (in_keys, in_params), out_params, component in pipe:
+                #В начале выполнения каждого компонента здесь:
+                # in_keys = []
+                # in_params = 'in' из конфига
+                # out_params = 'out' из конфигаа
+                # component - ссылка на объект компонента
+
+                component_ready = set(in_params).issubset(set(mem.keys())) and component not in components_done 
+                #если все входные параметры в памяти и компонент еще не отрабатывал
+                if component_ready:
+                    x = [mem[k] for k in in_params]
+                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop Start', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, mem = {mem.keys()}, \n x = {x}')
+                    res = component(*x)
+                    if len(out_params) == 1:
+                        if res != FebStopBranch.STOP:
+                            mem[out_params[0]] = res 
+                    else:
+                        for out_param_key, out_param_value in zip(out_params, res):
+                            if out_param_value != FebStopBranch.STOP:
+                                mem[out_param_key] = out_param_value
+                    components_done.append(component)
+                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop End', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, x={x}, \nmem={mem.keys()}, \nres={res}')
+                    chainer_iter_num += 1
+                    break
+            else:
+                raise RuntimeError(f'Не хватает компонент, чтобы вычислить {targets}')
+
+                
+        #Необходимо разделять статус компонент для разных пользователей
+        '''for (in_keys, in_params), out_params, component in pipe:
+            #В начале выполнения каждого компонента здесь:
+            # in_keys = []
+            # in_params = 'in' из конфига
+            # out_params = 'out' из конфигаа
+            # component - ссылка на объект компонента
+            var_dump(header='In Pipe Loop Start', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, mem = {mem}')
+            
             x = [mem[k] for k in in_params]
             if in_keys:
                 res = component(**dict(zip(in_keys, x)))
             else:
-                res = component(*x)
+                if FebStopBranch.STOP not in x:
+                    res = component(*x)
+                    if len(out_params) == 1:
+                        mem[out_params[0]] = res
+                    else:
+                        mem.update(zip(out_params, res))
+                    var_dump(header='In Pipe Loop End', msg = f'res={res}')  
+                    var_dump(header='In Pipe Loop End', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, x={x}, \nmem={mem}')
+
+                else:
+                    if len(out_params) == 1 and (out_params[0] not in mem):
+                        mem[out_params[0]] = FebStopBranch.STOP
+                    else:
+                        for out_param in out_params:
+                            if out_param not in mem:
+                                mem[out_param] = FebStopBranch.STOP
+                    var_dump(header='In Pipe Loop End', msg = f'Component {component} skipped!')      
+                    continue
+
             if len(out_params) == 1:
                 mem[out_params[0]] = res
             else:
-                mem.update(zip(out_params, res))
-
+                mem.update(zip(out_params, res))'''
+            
         res = [mem[k] for k in targets]
         if len(res) == 1:
             res = res[0]
+        # var_dump(header='Параметры на выходе', msg = f'param_names={param_names}\n, pipe={pipe}\n, targets={targets}\n, res={res}\n')
         return res
 
     def get_main_component(self) -> Serializable:

@@ -28,7 +28,7 @@ from question2wikidata import questions, functions
 log = get_logger(__name__)
 
 
-@register('text_parser')
+@register('fc_text_parser')
 class FebTextParser(FebComponent):
     """Convert batch of strings
     sl = ["author_birthplace author Лев Николаевич Толстой",

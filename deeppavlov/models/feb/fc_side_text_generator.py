@@ -30,17 +30,16 @@ log = get_logger(__name__)
 
 
 @register('feb_text_generator')
-class FebTextGenerator(FebComponent):
+class FebSideTextGenerator(FebComponent):
     """Convert utt to strings
       """
     @classmethod
     def component_type(cls):
         return cls.INTERMEDIATE_COMPONENT
 
-    def __init__(self, template=None, pattern_type_path = None, **kwargs):
+    def __init__(self, template=None, **kwargs):
         super().__init__(**kwargs)
         self.template = template # Шаблон для ответа 
-        self.pattern_type_path = pattern_type_path # Где искать тип шаблона для ответа
     # don't override basic realization
     # def test_and_prepare(self, utt):
 
@@ -59,17 +58,11 @@ class FebTextGenerator(FebComponent):
 
         gen_context = utt.get_gen_context()
 
-        query_type = gen_context['query_name']
-        params_list = gen_context['params']
-        results_dict = gen_context['results']
-
-        pattern_type = eval(self.pattern_type_path) or ''
-        var_dump(header='FebTextGenerator', msg=f'pattern_type={pattern_type}')
-        template_to_find = f'{self.template}{pattern_type}' if self.template else None
-
-        result = answers.answer( gen_context, prepared_pattern = template_to_find )   
-        utt.re_text = f'{result}'
-        return  utt
+        result = answers.answer(gen_context, prepared_pattern = self.template )  
+        side_utt = FebUtterance(f'{result}')
+        var_dump(header='textgen', msg=f'fc_side_text_gen вернул {side_utt}')
+        return side_utt
+        
 
     def pack_result(self, utt, ret_obj_l):
         """

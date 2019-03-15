@@ -19,7 +19,7 @@ from deeppavlov.core.models.component import Component
 from deeppavlov.core.common.log import get_logger
 import re
 import answers
-from patterns import PATTERNS
+from collections import OrderedDict
 
 
 from .feb_objects import *
@@ -29,18 +29,16 @@ from .feb_common import FebComponent
 log = get_logger(__name__)
 
 
-@register('feb_text_generator')
-class FebTextGenerator(FebComponent):
+@register('fc_error_analysis')
+class FebErrorAnalysis(FebComponent):
     """Convert utt to strings
       """
     @classmethod
     def component_type(cls):
         return cls.INTERMEDIATE_COMPONENT
 
-    def __init__(self, template=None, pattern_type_path = None, **kwargs):
+    def __init__(self, template=None, **kwargs):
         super().__init__(**kwargs)
-        self.template = template # Шаблон для ответа 
-        self.pattern_type_path = pattern_type_path # Где искать тип шаблона для ответа
     # don't override basic realization
     # def test_and_prepare(self, utt):
 
@@ -53,23 +51,6 @@ class FebTextGenerator(FebComponent):
         :param context: dict with processing context
         :return: processed object
         """
-        # Подготовка данных для шаблонизатора
-
-        # TODO: создать файлы с тематическими шаблонами, подгружать с помощью load_path ?
-
-        gen_context = utt.get_gen_context()
-
-        query_type = gen_context['query_name']
-        params_list = gen_context['params']
-        results_dict = gen_context['results']
-
-        pattern_type = eval(self.pattern_type_path) or ''
-        var_dump(header='FebTextGenerator', msg=f'pattern_type={pattern_type}')
-        template_to_find = f'{self.template}{pattern_type}' if self.template else None
-
-        result = answers.answer( gen_context, prepared_pattern = template_to_find )   
-        utt.re_text = f'{result}'
-        return  utt
 
     def pack_result(self, utt, ret_obj_l):
         """
@@ -81,7 +62,49 @@ class FebTextGenerator(FebComponent):
         # basic realization:
         # doesn't updated utt
         # assert utt is ret_obj_l[0], 'Basic realization of pack_result() is incorrect!'
-        return ret_obj_l[0]
+        # Подготовка данных для шаблонизатора
+
+        # TODO: перенести эту логику в отдельный компонент ErrorAnalysis
+        # TODO: создать файлы с тематическими шаблонами, подгружать с помощью load_path ?
+
+
+        gen_context = utt.get_gen_context()
+
+        query_type = gen_context['query_name']
+        params_list = gen_context['params']
+        results_dict = gen_context['results']
+
+        possible_options = ['no_class', 'nth_but_class', 'no_qid', 'no_data']
+        answer = OrderedDict((o, FebStopBranch.STOP) for o in possible_options)
+
+        prefix, pattern_type = None, '_'
+
+        if query_type == 'intent_not_set_type' or query_type == 'unsupported_type':
+            if len(params_list) != 0:
+                answer['no_class'] = [utt]
+                pattern_type += params_list[0].type
+            else:
+                answer['no_class'] = [utt]
+                pattern_type = ''
+        else:
+            if len(params_list) == 0:
+                answer['nth_but_class'] = [utt]
+                pattern_type += query_type
+            elif results_dict['error'] == 'DataNotFound': #когда это отрабатывает?
+                answer['no_data'] = [utt] 
+                pattern_type += query_type
+            elif len(params_list) != 0:
+                qid = params_list[0].qid
+                if qid is None:
+                    answer['no_qid'] = [utt]
+                    pattern_type += query_type
+                else:
+                    answer['no_data'] = [utt]
+                    pattern_type += query_type
+
+        utt.pattern_type = pattern_type
+        var_dump(header='fc_error_analysis', msg = f'{tuple(answer.values())}')
+        return tuple(answer.values())
 
 
 

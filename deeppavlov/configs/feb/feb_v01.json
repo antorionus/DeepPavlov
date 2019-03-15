@@ -1,4 +1,5 @@
 {
+  "Дополнительные параметры типа char_limit нужно присваивать в конструкторах соответствующих компонент" : 0,
   "dataset_reader": {},
   "dataset_iterator": {},
   "chainer": {
@@ -6,45 +7,141 @@
     "in_y": ["y"],
     "pipe": [
       {
-        "in": ["x"],
-        "class_name": "deeppavlov.models.feb.recall_context:FebRecallContext",
-        "out": ["x_context"]
+        "description": "Возвращает utt_new, если ... и utt_wnw, если ... ",
+        "id": "FebRecallContext",
+        "class_name": "deeppavlov.models.feb.fc_recall_context:FebRecallContext",
+        
+        "in": ["x"],     
+        "out": ["utt_new", "utt_wnw"]
       },
+
       {
-        "in": ["x_context"],
-        "class_name": "deeppavlov.models.feb.text_parser:FebTextParser",
+        "in": ["utt_new"],
+        "class_name": "deeppavlov.models.feb.fc_text_parser:FebTextParser",
         "out": ["x_val"]
       },
       {
         "in": ["x_val"],
-        "class_name": "deeppavlov.models.feb.ner:FebNER",
+        "class_name": "deeppavlov.models.feb.fc_ner:FebNER",
         "out": ["x_val_1"]
       },
       {
+        "class_name": "deeppavlov.models.feb.fc_intent_classifier:IntentClassifier",
         "in": ["x_val_1"],
-        "class_name": "deeppavlov.models.feb.intent_classifier:IntentClassifier",
-        "out": ["x_val_2"]
+        "out": ["int_bookq", "int_book_negative"]
       },
       {
-        "in": ["x_val_2"],
-        "class_name": "deeppavlov.models.feb.nent_to_qent:NentToQent",
+        "in": ["int_bookq"],
+        "class_name": "deeppavlov.models.feb.fc_nent_to_qent:NentToQent",
         "out": ["x_val_qid"]
       },
       {
         "in": ["x_val_qid"],
-        "class_name": "deeppavlov.models.feb.wikidata_query:WikidataQuery",
-        "out": ["x_result"]
+        "class_name": "deeppavlov.models.feb.fc_wikidata_query:WikidataQuery",
+        "out": ["book_query_result", "book_query_error"]
       },
+
       {
-        "in": ["x_result"],
+        "description": "Генератор текста в случае отсутствия ошибок",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "in": ["book_query_result"],
         "out": ["x_result_1"]
       },
+
+      {
+        "description": "Анализатор ошибок",
+        "class_name": "deeppavlov.models.feb.fc_error_analysis:FebErrorAnalysis",
+
+        "in": ["book_query_error"],
+        "out": ["no_class", "nth_but_class", "no_qid", "no_data"]
+      },
+
+      {
+        "description": "Генератор текста об ошибке-2",
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "template": "nth_but_class",
+        "pattern_type_path": "utt.pattern_type",
+        "in": ["nth_but_class"],
+        "out": ["book_q_error"]
+      },
+      {
+        "description": "Генератор текста об ошибке-3",
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "template": "no_qid",
+        "pattern_type_path": "utt.pattern_type",
+        "in": ["no_qid"],
+        "out": ["book_q_error"]
+      },
+      {
+        "description": "Генератор текста об ошибке-4",
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "template": "no_data",
+        "pattern_type_path": "utt.pattern_type",
+        "in": ["no_data"],
+        "out": ["book_q_error"]
+      },      
+
+      {
+        "description": "Предлагаем альтернативы (если возможно)",
+        "class_name": "deeppavlov.models.feb.fc_alternative_answer:FebAlternativeAnswer",
+        "in": ["book_query_error"],
+        "out": ["alternative_answer_yes", "alternative_answer_no"]
+      },
+
+      {
+        "description": "Генератор текста об альтернативе",
+        "class_name": "deeppavlov.models.feb.fc_side_text_generator:FebSideTextGenerator",
+
+        "template": "have_alternative",
+
+        "in": ["alternative_answer_yes"],
+        "out": ["alternative_string"]
+      },
+      {
+        "description": "Генератор текста об об отсутсвии альтернативы",
+        "class_name": "deeppavlov.models.feb.fc_side_text_generator:FebSideTextGenerator",
+
+        "template": "no_alternative",
+
+        "in": ["alternative_answer_no"],
+        "out": ["alternative_string"]
+      },             
+      {
+        "description": "Объединяем utt=book_q_error с сообщением alternative_string",
+        "in": ["book_q_error", "alternative_string"],
+        "class_name": "deeppavlov.models.feb.fc_text_concatenator:FebTextConcatenator",
+        "out": ["x_result_1"],
+        "trulala": "tralala"
+      },
+
+
+      {
+        "description": "Анализатор ошибок",
+        "class_name": "deeppavlov.models.feb.fc_error_analysis:FebErrorAnalysis",
+
+        "in": ["int_book_negative"],
+        "out": ["no_class", "nth_but_class", "no_qid", "no_data"]
+      },
+      {
+        "description": "Генератор текста в случае невозможности распознать интент",
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
+        "template": "no_class",
+        "pattern_type_path": "utt.pattern_type",
+        "in": ["no_class"],
+        "out": ["x_result_1"]
+      },
+
+
       {
         "in": ["x_result_1"],
-        "class_name": "deeppavlov.models.feb.memorize_context:FebMemorizeContext",
-        "out": ["val_str"]
+        "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
+        "out": ["val_str"],
+        "trulala": "tralala"
       }
+
+
+
+
     ],
     "out": ["val_str"]
   },

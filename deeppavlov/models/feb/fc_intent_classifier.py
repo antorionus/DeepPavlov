@@ -30,7 +30,7 @@ from intention_classifier import predict
 log = get_logger(__name__)
 
 
-@register('intent_classifier')
+@register('fc_intent_classifier')
 class IntentClassifier(FebComponent):
     """Convert batch of strings
       """
@@ -116,15 +116,18 @@ class IntentClassifier(FebComponent):
         return utt
 
 
-    # def pack_result(self, utt: FebUtterance, ret_obj_l):
-    #     """
-    #     Trivial packing
-    #     :param utt: current FebUtterance
-    #     :param ret_obj_l: list of entities
-    #     :return: utt with list of updated entities
-    #     """
-    #     utt.entities = ret_obj_l
-    #     return utt
+    def pack_result(self, utt: FebUtterance, ret_obj_l):
+        """
+        Trivial packing
+        :param utt: current FebUtterance
+        :param ret_obj_l: list of entities
+        :return: utt with list of updated entities
+        """
+        var_dump(header='intent_classifier pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
+        if utt.intents[0].type == FebIntent.UNSUPPORTED_TYPE:
+            return FebStopBranch.STOP, ret_obj_l
+        else:
+            return ret_obj_l, FebStopBranch.STOP
 
 
 

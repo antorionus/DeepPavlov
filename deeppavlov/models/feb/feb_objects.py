@@ -41,7 +41,7 @@ class FebError(object):
         """
         return err_code_2.find(err_code_1, 0, len(err_code_1)) == 0
 
-    def __init__(self, error_type, component, cause_d):
+    def __init__(self, error_type, component, cause_d, text=None):
         """
 
         :param error_type: ET constant
@@ -52,6 +52,7 @@ class FebError(object):
         self.type = error_type
         self.component_name = type(component).__name__
         self.cause_d = cause_d
+
 
     def __repr__(self):
         vals = ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())
@@ -457,6 +458,7 @@ class FebIntent(FebObject):
 
         self.result_qid = kwargs.get('result_qid', None)  # result id in Wikidata
         self.result_val = kwargs.get('result_val', None)  # result dict todo was 'result_str'
+
         # self.result_str = kwargs.get('result_str', None) # result string type
 
     @property
@@ -522,6 +524,7 @@ class FebUtterance(FebObject):
         self.intents = []  # list of intents
         self.re_text = None  # responce text
         self.chat_id = kwargs.get('chat_id', None)  #ID отправителя
+        self.pattern_type = kwargs.get('pattern_type', None)  #название шаблона в файле
 
     def to_dump(self):
         # return {k: [FebObject.recursive_json(item) for item in v if isinstance(item, (FebObject, FebError)) ] for k, v in self.__dict__.items() if v is not None }
@@ -556,3 +559,26 @@ class FebUtterance(FebObject):
                 return response
         else:
             return None
+
+    def get_gen_context(self) -> dict:
+        gen_context = {}
+        gen_context['params'] = [e for e in self.entities]  # [e.to_values_dict() for e in self.entities]
+
+        if len(self.intents) > 0:
+            # TODO: case of many intents
+            intent = self.intents[0]
+            gen_context['query_name'] = intent.type
+            gen_context['log'] = log
+            if intent.result_val:
+                results = intent.results_to_entities
+                gen_context['results'] = results[0]
+                gen_context['results_keys'] = results[1]
+            else:
+                gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+                gen_context['results_keys'] = ['error']
+        else:
+            gen_context['query_name'] = FebIntent.INTENT_NOT_SET_TYPE
+            gen_context['results'] = {'error': FebUtterance.ERROR_IN_RESULT}
+            gen_context['results_keys'] = ['error']
+
+        return gen_context
