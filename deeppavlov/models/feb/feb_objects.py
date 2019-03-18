@@ -264,10 +264,11 @@ class FebEntity(FebObject):
         self.qname = kwargs.get('qname', None)  # name in Wikidata
         self.normal_form = kwargs.get('normal_form', None)
         self.text_from_base = kwargs.get('text_from_base', None)
-        self.first = kwargs.get('first', None)
-        self.middle = kwargs.get('middle', None)
-        self.last = kwargs.get('last', None)
+        # self.first = kwargs.get('first', None)
+        # self.middle = kwargs.get('middle', None)
+        # self.last = kwargs.get('last', None)
         self.rollback_normal_form_capitalization()
+        self.info = kwargs.get('info', None)
 
     def to_text(self):
         return ' '.join(t.text for t in self.tokens)  # todo rollback "t.text" from t['text']
@@ -394,7 +395,9 @@ class FebAuthor(FebEntity):
 
     def __init__(self, **kwargs):
         super().__init__(FebEntity.AUTHOR, **kwargs)
-
+        self.first = kwargs.get('first', None)
+        self.middle = kwargs.get('middle', None)
+        self.last = kwargs.get('last', None)
 
 class FebBook(FebEntity):
 
@@ -475,7 +478,7 @@ class FebIntent(FebObject):
 
     @property
     def results_val_list_parse(self):
-        results_keys_set = set([list(result.keys())[0] for result in self.result_val])
+        results_keys_set = set(list([result.keys() for result in self.result_val][0]))
         parsed_result_dict = {}
         for result_key in results_keys_set:
             values_with_same_key_list = []
@@ -487,7 +490,7 @@ class FebIntent(FebObject):
                 else:
                     values_with_same_key_list.append(value)
 
-            parsed_result_dict[result_key] = values_with_same_key_list
+            parsed_result_dict[result_key] = list(set(values_with_same_key_list))
 
         return parsed_result_dict, list(results_keys_set)
 
@@ -509,7 +512,7 @@ class FebIntent(FebObject):
             elif results_key in ('langLabel', 'genreLabel','subjLabel'):
                 results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
             else:
-                results_dict[results_key] = [FebEntity(text_from_base=result_text) for result_text in results_val_list]
+                results_dict[results_key] = [FebEntity(type=None, text_from_base=result_text) for result_text in results_val_list]
         return results_dict, results_keys
 
 

@@ -92,6 +92,7 @@ class WikidataQuery(FebComponent):
             print('qparams', query_params)
             if not errors:
                 intent.result_val = functions.execute_query_sql(query, **query_params)
+
             # intent.result_str = str()
         return intent
 
@@ -102,8 +103,14 @@ class WikidataQuery(FebComponent):
         :param ret_obj_l: list of entities
         :return: utt with list of updated intents
         """
+        var_dump(header='wikidata_query pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
         utt.intents = ret_obj_l
-        return utt
+
+        if 'error' in utt.get_gen_context()['results_keys']:
+        # if len(utt.intents[0].errors):
+            return FebStopBranch.STOP, [utt]
+        else:
+            return [utt], FebStopBranch.STOP
 
 
     # @overrides

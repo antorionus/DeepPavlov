@@ -23,7 +23,7 @@ from deeppavlov.core.common.log import get_logger
 from .feb_objects import *
 from .feb_common import FebComponent
 
-from question2wikidata import questions, functions
+from question2wikidata import questions_ldb, functions_ldb
 
 
 log = get_logger(__name__)
@@ -56,9 +56,12 @@ class NentToQent(FebComponent):
         :param context: void dict
         :return: None (all results saved in place (for arguments))
         """
-        entity.qid, entity.id, entity.text_from_base = functions.get_id_with_label(entity.normal_form, param_type=entity.type,
-                                                                                   first=entity.first, middle=entity.middle,
-                                                                                   last=entity.last)
+        entity.qid, entity.id, entity.text_from_base = functions_ldb.get_id_with_label(entity.normal_form,
+                                                                                       param_type=entity.type,
+                                                                                       first=entity.first,
+                                                                                       middle=entity.middle,
+                                                                                       last=entity.last)
+        entity.info = functions_ldb.get_entity_info(entity.id, entity.qid, entity.type)
         # entity.qid, entity.text_from_base = functions.get_qid_with_label(entity.normal_form, entity.type)
         return entity
 
