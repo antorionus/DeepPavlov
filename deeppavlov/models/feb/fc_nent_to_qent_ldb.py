@@ -30,7 +30,7 @@ log = get_logger(__name__)
 
 
 @register('nent_to_qent')
-class NentToQent(FebComponent):
+class NentToQentLdb(FebComponent):
     """Convert batch of strings
       """
 
@@ -56,12 +56,11 @@ class NentToQent(FebComponent):
         :param context: void dict
         :return: None (all results saved in place (for arguments))
         """
-        entity.qid, entity.id, entity.text_from_base = functions_ldb.get_id_with_label(entity.normal_form,
-                                                                                       param_type=entity.type,
-                                                                                       first=entity.first,
-                                                                                       middle=entity.middle,
-                                                                                       last=entity.last)
-        entity.info = functions_ldb.get_entity_info(entity.id, entity.qid, entity.type)
+        entity.qid, entity.id, entity.text_from_base = functions_ldb.get_id_with_label(entity.normal_form, param_type=entity.type, first=entity.first, middle=entity.middle, last=entity.last)
+        if entity.qid or entity.id:
+            entity.info = functions_ldb.get_entity_info(entity.id, entity.qid, entity.type)
+        else:
+            entity.info = None
         # entity.qid, entity.text_from_base = functions.get_qid_with_label(entity.normal_form, entity.type)
         return entity
 

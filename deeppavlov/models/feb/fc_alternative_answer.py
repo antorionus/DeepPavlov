@@ -74,11 +74,16 @@ class FebAlternativeAnswer(FebComponent):
         #логика предложения альтернативных вариантов
         entities_list = [entity for entity in utt.entities]
         intents_list = [intent for intent in utt.intents]
-        ent = entities_list[0]
-        intent = intents_list[0]
-        alt_pattern = self.alternative_intent_select(ent.info, intent.type)
-
-        setattr(utt, 'alt_ans_pattern', alt_pattern)
+        if len(entities_list)>0 and len(intents_list)>0:
+            ent = entities_list[0]
+            intent = intents_list[0]
+            if ent.info:
+                alt_pattern = self.alternative_intent_select(ent.info, intent.type)
+                setattr(utt, 'alt_ans_pattern', alt_pattern)
+            else:
+                setattr(utt, 'alt_ans_pattern', None)
+        else:
+            setattr(utt, 'alt_ans_pattern', None)
         # TEMP_CAN_SUGGEST_ALTERNATIVE = 'TEST_ALTERNATIVE' in utt.text #False True
 
         # utt.alt_ans_pattern

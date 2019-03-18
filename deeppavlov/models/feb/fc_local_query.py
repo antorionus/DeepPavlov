@@ -22,14 +22,15 @@ from deeppavlov.core.common.log import get_logger
 from .feb_objects import *
 from .feb_common import FebComponent
 
-from question2wikidata import questions, functions
-from question2wikidata.server_queries import queries
-
+from question2wikidata import questions_ldb as questions
+from question2wikidata import functions_ldb as functions
+# from question2wikidata.server_queries import queries
+from question2wikidata.local_queries import queries
 log = get_logger(__name__)
 
 
 @register('wikiddata_query')
-class WikidataQuery(FebComponent):
+class LocalQuery(FebComponent):
     """Convert batch of strings
       """
 
@@ -91,7 +92,11 @@ class WikidataQuery(FebComponent):
                     errors = True
             print('qparams', query_params)
             if not errors:
-                intent.result_val = functions.execute_query_sql(query, **query_params)
+                try:
+                    intent.result_val = {intent.type : ent_l[0].info[intent.type]}
+                except KeyError:
+                    intent.result_val = {'error':'error not in entity.info'}
+                # intent.result_val = functions.execute_query_sql(query, **query_params)
 
             # intent.result_str = str()
         return intent
@@ -106,7 +111,7 @@ class WikidataQuery(FebComponent):
         var_dump(header='wikidata_query pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
         utt.intents = ret_obj_l
 
-        if 'error' in utt.get_gen_context()['results_keys']:
+        if 'error' in utt.get_gen_context()['results_keys'] or None in utt.get_gen_context()['results']:
         # if len(utt.intents[0].errors):
             return FebStopBranch.STOP, [utt]
         else:
