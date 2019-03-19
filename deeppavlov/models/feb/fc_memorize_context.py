@@ -39,8 +39,9 @@ class FebMemorizeContext(FebComponent):
     def component_type(cls):
         return cls.FINAL_COMPONENT
 
-    def __init__(self, **kwargs):
+    def __init__(self, memorize: bool = False, **kwargs):
         super().__init__(**kwargs)
+        self.memorize = memorize
 
     # don't override basic realization
     # def test_and_prepare(self, utt):
@@ -48,9 +49,16 @@ class FebMemorizeContext(FebComponent):
         
         var_dump(header='memorize_context', msg='memorize_context started!')
 
-        chat_id = utt.chat_id
-        current_timestamp = datetime.now().timestamp()
+        if self.memorize:
+            chat_id = utt.chat_id
+            current_timestamp = datetime.now().timestamp()
 
-        CONTEXTS[chat_id] = {'timestamp': current_timestamp, 'context': 'Some Context...'}
+            entities = utt.entities
+            intent = utt.alt_ans_pattern
+
+            CONTEXTS[chat_id] = {'timestamp': current_timestamp, 'prev_entities': entities, 'alt_intent': intent}
+        else:
+            if utt.chat_id in CONTEXTS:
+                CONTEXTS.pop(utt.chat_id)
 
         return [(utt, {})]

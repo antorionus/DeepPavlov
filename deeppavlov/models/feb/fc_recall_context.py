@@ -46,9 +46,14 @@ class FebRecallContext(FebComponent):
 
     def test_and_prepare(self, utt):
         
+
+        return [(utt, {})]
+
+    def pack_result(self, utt, ret_obj_l):
+
         var_dump(header='recall_context', msg='recall_context started!')
 
-        chat_id = utt.chat_id
+        chat_id: str = utt.chat_id
         context = CONTEXTS.get(chat_id, None)
         now = datetime.now().timestamp()
 
@@ -58,10 +63,12 @@ class FebRecallContext(FebComponent):
 
         var_dump(header='recall_context', msg=f'current context = {context}!')
         var_dump(header='recall_context', msg=f'all contexts = {CONTEXTS}!')
-
-        return [(utt, {})]
-
-    def pack_result(self, utt, ret_obj_l):
         
         var_dump(header='RecallContext', msg=f'ret_obj_l={ret_obj_l}, FebStopBranch() = {FebStopBranch()}')
-        return ret_obj_l, FebStopBranch.STOP
+
+        if chat_id not in CONTEXTS:
+            return ret_obj_l, FebStopBranch.STOP
+            utt.context = {}
+        else:
+            utt.context = CONTEXTS[utt.chat_id]
+            return FebStopBranch.STOP, ret_obj_l

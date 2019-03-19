@@ -91,6 +91,7 @@ class LocalQuery(FebComponent):
                                                                                 'entities': (ent_l,id_l)}}))
                     errors = True
             print('qparams', query_params)
+            #TODO: продумать, как обойти ent_l[0]
             if not errors:
                 try:
                     intent.result_val = {intent.type : ent_l[0].info[intent.type]}

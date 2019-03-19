@@ -15,5 +15,9 @@
   "28": "author_where_died",
   "29": "author_where_buried",
   "210": "author_inspired_by",
-  "999": "unsupported_type"
+  "999": "unsupported_type",
+  "31": "yes",
+  "32": "no",
+  "33": "idk",
+  "9999": "unsupported_type"
 }

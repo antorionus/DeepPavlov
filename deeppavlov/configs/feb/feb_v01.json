@@ -160,7 +160,7 @@
       {
         "in": ["result_string_alternative"],
         "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
-        "memorize": false,
+        "memorize": true,
         "out": ["val_str"]
       },
       {
@@ -181,7 +181,7 @@
       {
         "class_name": "deeppavlov.models.feb.fc_intent_classifier:IntentClassifier",
         "in": ["parsed_wnw"],
-        "intent_classifier_type" : "regular",
+        "intent_classifier_type" : "wnw",
         "out": ["int_wnw_yes", "int_wnw_no", "int_wnw_negative_class"]
       },
       {
@@ -192,7 +192,7 @@
 
       {
         "description": "Генератор текста в результате отрицательного ответа в ветке Yes-No",
-        "class_name": "deeppavlov.models.feb.fc_side_text_generator:FebSideTextGenerator",
+        "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
 
         "template": "wnw_no",
 

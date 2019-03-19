@@ -29,7 +29,7 @@ from .feb_common import FebComponent
 log = get_logger(__name__)
 
 
-@register('feb_text_generator')
+@register('feb_side_text_generator')
 class FebSideTextGenerator(FebComponent):
     """Convert utt to strings
       """

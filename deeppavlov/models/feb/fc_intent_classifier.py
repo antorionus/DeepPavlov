@@ -22,9 +22,11 @@ from deeppavlov.core.common.log import get_logger
 
 from .feb_objects import *
 from .feb_common import FebComponent
+from ..feb import CONTEXTS
 
 from question2wikidata import questions, functions
-from intention_classifier import predict
+from intention_classifier import predict,predict_yes_no
+from collections import OrderedDict
 
 
 log = get_logger(__name__)
@@ -115,9 +117,38 @@ class IntentClassifier(FebComponent):
                 intent.add_error(FebError(FebError.ET_INP_DATA, self, {FebError.EC_DATA_VAL: intents_code}))
             utt.intents.append(intent)
             # var_dump(header = 'intent_classifier', msg = prepared_data)
-        elif self.intent_classifier_type == "yes_no":
+        elif self.intent_classifier_type == "wnw":
 
-            raise RuntimeError("yes_no классификатор не реализован")
+            utt, tokens, entities = obj, context['tokens'], context['entities']
+            yes = no = False
+            tokens_for_classifier = []
+            for token in tokens:
+                if (token.type == FebToken.NOT_PUNCTUATION) and (FebToken.TAG_AUTHOR not in token.tags) and\
+                    (FebToken.TAG_BOOK not in token.tags):
+                    if token.normal_form == 'да':
+                         yes = True
+                    if token.normal_form in {'не', 'нет'}:
+                         no = True
+                    if token.normal_form == 'угу':
+                        token.normal_form = 'ага'
+                        token.pos = 'PART'
+                    elif token.normal_form == 'нету':
+                        token.normal_form = 'нет'
+                        token.pos = 'PART'
+                        no = True
+                    tokens_for_classifier.append(f'{token.normal_form}_{token.pos}')
+
+            intents_code = predict_yes_no(tokens_for_classifier, yes, no)
+            var_dump(header='wnw_intent_classificator', msg = f'intents_code')
+
+            if intents_code == "yes":
+                intent = FebIntent(utt.context['alt_intent'])
+            elif intents_code == "no":
+                intent = FebIntent(FebIntent.WNW_NO)
+            else:
+                # intent = FebIntent(FebIntent.WNW_NEG)
+                pass
+            utt.intents.append(intent)
 
         else:
             raise RuntimeError(f"{self.intent_classifier_type} классификатор не реализован")
@@ -133,10 +164,27 @@ class IntentClassifier(FebComponent):
         :return: utt with list of updated entities
         """
         var_dump(header='intent_classifier pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
-        if utt.intents[0].type == FebIntent.UNSUPPORTED_TYPE:
-            return FebStopBranch.STOP, ret_obj_l
-        else:
-            return ret_obj_l, FebStopBranch.STOP
+        if self.intent_classifier_type == "regular":
+            if utt.intents[0].type == FebIntent.UNSUPPORTED_TYPE:
+                return FebStopBranch.STOP, ret_obj_l
+            else:
+                return ret_obj_l, FebStopBranch.STOP
+        elif self.intent_classifier_type == "wnw":
+
+            answer = [FebStopBranch.STOP]*3
+            if len(utt.intents): #WNW_YES или WNW_NO
+                intent = utt.intents[0].type
+                if intent == FebIntent.WNW_NO:
+                    answer[1] = [utt]
+                else:
+                    answer[0] = [utt]
+            else: #WNW_NEG
+                answer[2] = [utt]
+            
+            var_dump(header='pack result intent_classifier', msg=f'{answer}')
+            return tuple(answer)
+
+              
 
 
 

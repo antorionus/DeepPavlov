@@ -21,6 +21,7 @@ from deeppavlov.core.common.log import get_logger
 # from .feb_common import NamedEntity, NamedEntityType, Utterance, UtteranceErrors
 from .feb_objects import *
 from .feb_common import FebComponent
+from ..feb import CONTEXTS
 
 from question2wikidata import questions, functions
 from question2wikidata.server_queries import queries
@@ -46,15 +47,18 @@ class LoadAnswer(FebComponent):
         :param utt: FebUtterance
         :return: list(tuple(FebIntent, {})) - for FebIntent context is void
         """
-        return [(i, {'entities': utt.entities}) for i in utt.intents]
+        return [(utt, {})]
 
-    def process(self, intent: FebIntent, context):
+    def process(self, utt: FebUtterance, context):
         """
         Setting qid for entity
         :param entity: FebEntity
         :param context: void dict
         :return: None (all results saved in place (for arguments))
         """
+        utt.entities = utt.context['prev_entities']
+        intent = utt.intents[0]
+        intent.result_val = {intent.type : utt.entities[0].info[utt.context['alt_intent']]}
         return utt
 
     def pack_result(self, utt: FebUtterance, ret_obj_l):

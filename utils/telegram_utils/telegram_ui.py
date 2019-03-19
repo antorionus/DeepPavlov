@@ -76,7 +76,7 @@ def init_bot_for_model(agent: Agent, token: str, model_name: str, proxy_key: str
             message_text = message['content'] #то, что идет в ответ пользователю
             bot.send_message(chat_id, message_text)
 
-    bot.polling()
+    bot.polling(timeout=40)
 
 
 def interact_model_by_telegram(config, token=None, proxy_key=None, proxy_val=None):

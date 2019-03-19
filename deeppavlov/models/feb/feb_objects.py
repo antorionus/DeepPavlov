@@ -475,6 +475,9 @@ class FebIntent(FebObject):
     supported_types = {q for q in queries.keys() if q[:5] != 'help_'}
     UNSUPPORTED_TYPE = 'unsupported_type'
     INTENT_NOT_SET_TYPE = 'intent_not_set_type'
+    WNW_YES = 'wnw_yes'
+    WNW_NO = 'wnw_no'
+    WNW_NEG = 'wnw_negative_class'
 
     @classmethod
     def in_supported_types(cls, type):

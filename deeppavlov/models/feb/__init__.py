@@ -16,4 +16,4 @@ DEBUG = False
 
 #Словарь контекстов, ключ - chat_id, значение - ???
 CONTEXTS = dict()
-MAX_REMEMBER_TIME = 10 #в секундах
+MAX_REMEMBER_TIME = 100 #в секундах
