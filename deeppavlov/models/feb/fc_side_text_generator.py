@@ -60,6 +60,7 @@ class FebSideTextGenerator(FebComponent):
 
         result = answers.answer(gen_context, prepared_pattern = self.template )  
         side_utt = FebUtterance(f'{result}')
+        
         var_dump(header='textgen', msg=f'fc_side_text_gen вернул {side_utt}')
         return side_utt
         

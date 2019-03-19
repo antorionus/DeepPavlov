@@ -37,8 +37,9 @@ class FebErrorAnalysis(FebComponent):
     def component_type(cls):
         return cls.INTERMEDIATE_COMPONENT
 
-    def __init__(self, template=None, **kwargs):
+    def __init__(self, error_place=None, **kwargs):
         super().__init__(**kwargs)
+        self.error_place = error_place # место, где TextGen будет искать постфикс для шаблона в случае ошибки
     # don't override basic realization
     # def test_and_prepare(self, utt):
 
@@ -102,7 +103,8 @@ class FebErrorAnalysis(FebComponent):
                     answer['no_data'] = [utt]
                     pattern_type += query_type
 
-        utt.pattern_type = pattern_type
+        exec(f"{self.error_place} = '{pattern_type}'")
+        # utt.pattern_type = pattern_type
         var_dump(header='fc_error_analysis', msg = f'{tuple(answer.values())}')
         return tuple(answer.values())
 

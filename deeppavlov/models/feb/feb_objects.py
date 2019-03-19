@@ -7,6 +7,8 @@ from question2wikidata.server_queries import queries
 # from FictionEmpatBot.queries.question2wikidata.server_queries import queries
 from deeppavlov.core.common.log import get_logger
 import requests
+import json
+from datetime import datetime
 
 log = get_logger(__name__)
 
@@ -77,21 +79,34 @@ class FebObject(object):
     def has_errors(self):
         return len(self.errors) != 0
 
-    @classmethod
-    def recursive_json(cls, obj):
-        if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
-            # print(obj, type(obj))
-            return [FebObject.recursive_json(element) for element in obj]
-        elif isinstance(obj, dict):
-            # print(obj, type(obj))s
+    # @classmethod
+    # def recursive_json(cls, obj):
+    #     if isinstance(obj, list) or isinstance(obj, tuple) or isinstance(obj, set):
+    #         # print(obj, type(obj))
+    #         return [FebObject.recursive_json(element) for element in obj]
+    #     elif isinstance(obj, dict):
+    #         # print(obj, type(obj))s
+    #         props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
+    #         return {k: FebObject.recursive_json(v) for k, v in obj.items() if k not in props_to_cut}
+    #     elif isinstance(obj, FebObject) or isinstance(obj, FebError):
+    #         # print(obj, type(obj))
+    #         props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
+    #         return {k: FebObject.recursive_json(v) for k, v in obj.__dict__.items() if k not in props_to_cut}
+    #     else:
+    #         return obj
+
+    @staticmethod
+    def serialize(obj):
+        """JSON serializer for objects not serializable by default json code"""
+
+        if isinstance(obj, set):
+            return list(obj)
+
+        if isinstance(obj, (FebObject, FebError)):
             props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
-            return {k: FebObject.recursive_json(v) for k, v in obj.items() if k not in props_to_cut}
-        elif isinstance(obj, FebObject) or isinstance(obj, FebError):
-            # print(obj, type(obj))
-            props_to_cut = FebObject.IGNORE_IN_DUMP.get(obj.__class__.__name__, [])
-            return {k: FebObject.recursive_json(v) for k, v in obj.__dict__.items() if k not in props_to_cut}
-        else:
-            return obj
+            return {k: v for k, v in obj.__dict__.items() if k not in props_to_cut}    
+            
+        return obj.__dict__
 
     IGNORE_IN_DUMP = {
         'FebToken': ['source_text'],
@@ -509,7 +524,7 @@ class FebIntent(FebObject):
             elif results_key in ('langLabel', 'genreLabel','subjLabel'):
                 results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
             else:
-                results_dict[results_key] = [FebEntity(text_from_base=result_text) for result_text in results_val_list]
+                results_dict[results_key] = [FebEntity(type=None, text_from_base=result_text) for result_text in results_val_list]
         return results_dict, results_keys
 
 
@@ -532,7 +547,9 @@ class FebUtterance(FebObject):
 
     def to_dump(self):
         # return {k: [FebObject.recursive_json(item) for item in v if isinstance(item, (FebObject, FebError)) ] for k, v in self.__dict__.items() if v is not None }
-        return {k: FebObject.recursive_json(v) for k, v in self.__dict__.items() if v is not None}
+        # return {k: FebObject.recursive_json(v) for k, v in self.__dict__.items() if v is not None}
+        self.dump_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return json.loads(json.dumps(self, default=FebObject.serialize, ensure_ascii=False))
 
     def return_text(self):
         if self.re_text:

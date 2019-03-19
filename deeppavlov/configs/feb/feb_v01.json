@@ -18,25 +18,26 @@
       {
         "in": ["utt_new"],
         "class_name": "deeppavlov.models.feb.fc_text_parser:FebTextParser",
-        "out": ["x_val"]
+        "out": ["parsed_new"]
       },
       {
-        "in": ["x_val"],
+        "in": ["parsed_new"],
         "class_name": "deeppavlov.models.feb.fc_ner:FebNER",
-        "out": ["x_val_1"]
+        "out": ["ner_new"]
       },
       {
         "class_name": "deeppavlov.models.feb.fc_intent_classifier:IntentClassifier",
-        "in": ["x_val_1"],
+        "in": ["ner_new"],
+        "intent_classifier_type" : "regular",
         "out": ["int_bookq", "int_book_negative"]
       },
       {
         "in": ["int_bookq"],
         "class_name": "deeppavlov.models.feb.fc_nent_to_qent:NentToQent",
-        "out": ["x_val_qid"]
+        "out": ["identified_book_q"]
       },
       {
-        "in": ["x_val_qid"],
+        "in": ["identified_book_q"],
         "class_name": "deeppavlov.models.feb.fc_wikidata_query:WikidataQuery",
         "out": ["book_query_result", "book_query_error"]
       },
@@ -45,13 +46,14 @@
         "description": "Генератор текста в случае отсутствия ошибок",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
         "in": ["book_query_result"],
-        "out": ["x_result_1"]
+        "out": ["result_string_ok"]
       },
 
       {
+        "id": "error_analysis_data",
         "description": "Анализатор ошибок",
         "class_name": "deeppavlov.models.feb.fc_error_analysis:FebErrorAnalysis",
-
+        "error_place": "utt.pattern_type",
         "in": ["book_query_error"],
         "out": ["no_class", "nth_but_class", "no_qid", "no_data"]
       },
@@ -60,7 +62,7 @@
         "description": "Генератор текста об ошибке-2",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
         "template": "nth_but_class",
-        "pattern_type_path": "utt.pattern_type",
+        "pattern_type_path": "#error_analysis_data.error_place",
         "in": ["nth_but_class"],
         "out": ["book_q_error"]
       },
@@ -68,7 +70,7 @@
         "description": "Генератор текста об ошибке-3",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
         "template": "no_qid",
-        "pattern_type_path": "utt.pattern_type",
+        "pattern_type_path": "#error_analysis_data.error_place",
         "in": ["no_qid"],
         "out": ["book_q_error"]
       },
@@ -76,7 +78,7 @@
         "description": "Генератор текста об ошибке-4",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
         "template": "no_data",
-        "pattern_type_path": "utt.pattern_type",
+        "pattern_type_path": "#error_analysis_data.error_place",
         "in": ["no_data"],
         "out": ["book_q_error"]
       },      
@@ -104,43 +106,111 @@
         "template": "no_alternative",
 
         "in": ["alternative_answer_no"],
-        "out": ["alternative_string"]
-      },             
+        "out": ["alternative_string_error"]
+      },     
+
       {
         "description": "Объединяем utt=book_q_error с сообщением alternative_string",
         "in": ["book_q_error", "alternative_string"],
         "class_name": "deeppavlov.models.feb.fc_text_concatenator:FebTextConcatenator",
-        "out": ["x_result_1"],
-        "trulala": "tralala"
+        "out": ["result_string_alternative"]
+      },
+      {
+        "description": "Объединяем utt=book_q_error с сообщением об отстуствии альтернативы alternative_string_error",
+        "in": ["book_q_error", "alternative_string_error"],
+        "class_name": "deeppavlov.models.feb.fc_text_concatenator:FebTextConcatenator",
+        "out": ["result_string_error"]
       },
 
 
       {
+        "id": "error_analysis_intent",
         "description": "Анализатор ошибок",
         "class_name": "deeppavlov.models.feb.fc_error_analysis:FebErrorAnalysis",
 
+        "error_place": "utt.pattern_type",
         "in": ["int_book_negative"],
         "out": ["no_class", "nth_but_class", "no_qid", "no_data"]
       },
+      
       {
         "description": "Генератор текста в случае невозможности распознать интент",
         "class_name": "deeppavlov.models.feb.fc_text_generator:FebTextGenerator",
         "template": "no_class",
-        "pattern_type_path": "utt.pattern_type",
+        "pattern_type_path": "#error_analysis_intent.error_place",
+
         "in": ["no_class"],
-        "out": ["x_result_1"]
+        "out": ["result_string_negative"]
       },
 
 
       {
-        "in": ["x_result_1"],
+        "in": ["result_string_negative"],
         "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
-        "out": ["val_str"],
-        "trulala": "tralala"
+        "memorize": false,
+        "out": ["val_str"]
+      },
+
+      {
+        "in": ["result_string_ok"],
+        "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
+        "memorize": false,
+        "out": ["val_str"]
+      },
+      {
+        "in": ["result_string_alternative"],
+        "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
+        "memorize": false,
+        "out": ["val_str"]
+      },
+      {
+        "in": ["result_string_error"],
+        "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
+        "memorize": false,
+        "out": ["val_str"]
+      },
+
+
+      {
+        "description": "ВЕТКА ДА-НЕТ КЛАССИФИКАТОРА",
+        "in": ["utt_wnw"],
+        "class_name": "deeppavlov.models.feb.fc_text_parser:FebTextParser",
+        "out": ["parsed_wnw"]
+      },
+
+      {
+        "class_name": "deeppavlov.models.feb.fc_intent_classifier:IntentClassifier",
+        "in": ["parsed_wnw"],
+        "intent_classifier_type" : "regular",
+        "out": ["int_wnw_yes", "int_wnw_no", "int_wnw_negative_class"]
+      },
+      {
+        "class_name": "deeppavlov.models.feb.fc_load_answer:LoadAnswer",
+        "in": ["int_wnw_yes"],
+        "out": ["book_query_result"]
+      },
+
+      {
+        "description": "Генератор текста в результате отрицательного ответа в ветке Yes-No",
+        "class_name": "deeppavlov.models.feb.fc_side_text_generator:FebSideTextGenerator",
+
+        "template": "wnw_no",
+
+        "in": ["int_wnw_no"],
+        "out": ["result_wnw_no"]
+      },
+      {
+        "in": ["result_wnw_no"],
+        "class_name": "deeppavlov.models.feb.fc_memorize_context:FebMemorizeContext",
+        "memorize": false,
+        "out": ["val_str"]
+      },
+
+      {
+        "in": ["int_wnw_negative_class"],
+        "class_name": "deeppavlov.models.feb.fc_ner:FebNER",
+        "out": ["ner_new"]
       }
-
-
-
 
     ],
     "out": ["val_str"]

@@ -57,8 +57,9 @@ class IntentClassifier(FebComponent):
     def component_type(cls):
         return cls.INTERMEDIATE_COMPONENT
 
-    def __init__(self, **kwargs):
+    def __init__(self, intent_classifier_type: str = "regular", **kwargs):
         super().__init__(**kwargs)
+        self.intent_classifier_type = intent_classifier_type # тип классификатора (regular или yes_no)
 
     def test_and_prepare(self, utt: FebUtterance):
         """
@@ -79,39 +80,47 @@ class IntentClassifier(FebComponent):
         :param context: void dict
         :return: None (all results saved in place (for arguments))
         """
-        utt, tokens, entities = obj, context['tokens'], context['entities']
-        tokens_for_classifier = []
-        question_words = dict(self.QUESTION_WORDS)
-        for token in tokens:
-            if token.type == FebToken.NOT_PUNCTUATION and token.normal_form in IntentClassifier.QUESTION_WORDS:
-                question_words[token.normal_form] = True
-            if (token.type == FebToken.NOT_PUNCTUATION) and (FebToken.TAG_AUTHOR not in token.tags) and\
-                (FebToken.TAG_BOOK not in token.tags):
-                tokens_for_classifier.append(f'{token.normal_form}_{token.pos}')
-        
-        author_count, book_count = 0, 0
 
-        var_dump(header='intent_classifier entities', msg = entities)
-        for entity in entities:
-            if isinstance(entity, FebAuthor): author_count += 1
-            if isinstance(entity, FebBook): book_count += 1
+        if self.intent_classifier_type == "regular":
+            utt, tokens, entities = obj, context['tokens'], context['entities']
+            tokens_for_classifier = []
+            question_words = dict(self.QUESTION_WORDS)
+            for token in tokens:
+                if token.type == FebToken.NOT_PUNCTUATION and token.normal_form in IntentClassifier.QUESTION_WORDS:
+                    question_words[token.normal_form] = True
+                if (token.type == FebToken.NOT_PUNCTUATION) and (FebToken.TAG_AUTHOR not in token.tags) and\
+                    (FebToken.TAG_BOOK not in token.tags):
+                    tokens_for_classifier.append(f'{token.normal_form}_{token.pos}')
+            
+            author_count, book_count = 0, 0
 
-        counts = {'author_count': author_count, 'book_count': book_count}
-        # prepared_data = [tokens_for_classifier, {'author_count': author_count, 'book_count': book_count}]
+            var_dump(header='intent_classifier entities', msg = entities)
+            for entity in entities:
+                if isinstance(entity, FebAuthor): author_count += 1
+                if isinstance(entity, FebBook): book_count += 1
 
-        question_words_param = [question_words[key] for key in sorted(question_words.keys())]
-        log.debug(f'\nquestion_words:{question_words}, question_words_param:{question_words_param}\n')
-        intent = predict(tokens_for_classifier, question_words=question_words_param, **counts)
-        var_dump(header='intent_classifier intent', msg = intent)
+            counts = {'author_count': author_count, 'book_count': book_count}
+            # prepared_data = [tokens_for_classifier, {'author_count': author_count, 'book_count': book_count}]
 
-        intents_code = intent
-        if FebIntent.in_supported_types(intents_code):
-            intent = FebIntent(intents_code)
+            question_words_param = [question_words[key] for key in sorted(question_words.keys())]
+            log.debug(f'\nquestion_words:{question_words}, question_words_param:{question_words_param}\n')
+            intent = predict(tokens_for_classifier, question_words=question_words_param, **counts)
+            var_dump(header='intent_classifier intent', msg = intent)
+
+            intents_code = intent
+            if FebIntent.in_supported_types(intents_code):
+                intent = FebIntent(intents_code)
+            else:
+                intent = FebIntent(FebIntent.UNSUPPORTED_TYPE)
+                intent.add_error(FebError(FebError.ET_INP_DATA, self, {FebError.EC_DATA_VAL: intents_code}))
+            utt.intents.append(intent)
+            # var_dump(header = 'intent_classifier', msg = prepared_data)
+        elif self.intent_classifier_type == "yes_no":
+
+            raise RuntimeError("yes_no классификатор не реализован")
+
         else:
-            intent = FebIntent(FebIntent.UNSUPPORTED_TYPE)
-            intent.add_error(FebError(FebError.ET_INP_DATA, self, {FebError.EC_DATA_VAL: intents_code}))
-        utt.intents.append(intent)
-        # var_dump(header = 'intent_classifier', msg = prepared_data)
+            raise RuntimeError(f"{self.intent_classifier_type} классификатор не реализован")
 
         return utt
 

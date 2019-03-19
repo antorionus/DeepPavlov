@@ -203,9 +203,9 @@ class Chainer(Component):
                         for out_param_key, out_param_value in zip(out_params, res):
                             if out_param_value != FebStopBranch.STOP:
                                 mem[out_param_key] = out_param_value
-                    components_done.append(component)
                     var_dump(header=f'[{chainer_iter_num}] In Pipe Loop End', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, x={x}, \nmem={mem.keys()}, \nres={res}')
                     chainer_iter_num += 1
+                    components_done.append(component)
                     break
             else:
                 raise RuntimeError(f'Не хватает компонент, чтобы вычислить {targets}')
@@ -251,8 +251,42 @@ class Chainer(Component):
         res = [mem[k] for k in targets]
         if len(res) == 1:
             res = res[0]
+        var_dump(header='Итоговый конвейвер', msg = f'{components_done}')   
         # var_dump(header='Параметры на выходе', msg = f'param_names={param_names}\n, pipe={pipe}\n, targets={targets}\n, res={res}\n')
         return res
+
+    @staticmethod
+    def _compute_old(*args, param_names, pipe, targets):
+       expected = set(targets)
+       final_pipe = []
+       for (in_keys, in_params), out_params, component in reversed(pipe):
+           if expected.intersection(out_params):
+               expected = expected - set(out_params) | set(in_params)
+               final_pipe.append(((in_keys, in_params), out_params, component))
+       final_pipe.reverse()
+       if not expected.issubset(param_names):
+           raise RuntimeError(f'{expected} are required to compute {targets} but were not found in memory or inputs')
+       pipe = final_pipe
+
+       mem = dict(zip(param_names, args))
+       del args
+
+       for (in_keys, in_params), out_params, component in pipe:
+           x = [mem[k] for k in in_params]
+           if in_keys:
+               res = component(**dict(zip(in_keys, x)))
+           else:
+               res = component(*x)
+           if len(out_params) == 1:
+               mem[out_params[0]] = res
+           else:
+               mem.update(zip(out_params, res))
+
+       res = [mem[k] for k in targets]
+       if len(res) == 1:
+           res = res[0]
+       return res
+
 
     def get_main_component(self) -> Serializable:
         return self.main or self.pipe[-1][-1]
