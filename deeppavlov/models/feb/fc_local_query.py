@@ -29,7 +29,7 @@ from question2wikidata.local_queries import queries
 log = get_logger(__name__)
 
 
-@register('wikiddata_query')
+@register('local_query')
 class LocalQuery(FebComponent):
     """Convert batch of strings
       """

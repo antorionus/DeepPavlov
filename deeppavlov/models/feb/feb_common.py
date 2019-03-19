@@ -120,7 +120,7 @@ class FebComponent(Component):
                 res_batch.append(utt.return_text())
                 dump = f'{utt.to_dump()}\n'
                 log.debug(dump)
-                # pretty_json(utt.to_dump())
+                pretty_json(utt.to_dump())
                 LOG_FILE.write(dump); LOG_FILE.flush()
             else:
                 if multiple_pack_results:

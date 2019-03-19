@@ -33,12 +33,12 @@
       },
       {
         "in": ["int_bookq"],
-        "class_name": "deeppavlov.models.feb.fc_nent_to_qent:NentToQent",
+        "class_name": "deeppavlov.models.feb.fc_nent_to_qent_ldb:NentToQentLdb",
         "out": ["identified_book_q"]
       },
       {
         "in": ["identified_book_q"],
-        "class_name": "deeppavlov.models.feb.fc_wikidata_query:WikidataQuery",
+        "class_name": "deeppavlov.models.feb.fc_local_query:LocalQuery",
         "out": ["book_query_result", "book_query_error"]
       },
 
