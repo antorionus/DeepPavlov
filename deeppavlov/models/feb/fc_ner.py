@@ -22,7 +22,8 @@ import re
 from .feb_objects import *
 from .feb_common import FebComponent
 
-from question2wikidata import questions, functions
+from question2wikidata import questions_ldb as questions
+from question2wikidata import functions_ldb as functions
 
 from ..feb import BOOK_NAMES_EXTRACTOR
 

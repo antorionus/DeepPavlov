@@ -20,6 +20,7 @@ from deeppavlov.core.common.log import get_logger
 import re
 import answers
 from patterns import PATTERNS
+from alternative_matrix import alternate_matrix
 
 
 from .feb_objects import *
@@ -44,6 +45,22 @@ class FebAlternativeAnswer(FebComponent):
     # don't override basic realization
     # def test_and_prepare(self, utt):
 
+    @staticmethod
+    def alternative_intent_select(info_dict, current_intent):
+        info_keys_list = list(info_dict.keys())
+        score_dict = {}
+        for known_info_key in info_keys_list:
+            if known_info_key in alternate_matrix.keys():
+                score = alternate_matrix[current_intent][known_info_key]
+                score_dict[score] = known_info_key
+            else:
+                continue
+        if len(score_dict) > 0:
+            print(f"___alternative_intent_select____ chosen new alternate: {score_dict[max(score_dict)]}")
+            return score_dict[max(score_dict)]
+        else:
+            print(f"___alternative_intent_select____ : No intent selected (return None)")
+            return None
 
     def pack_result(self, utt: FebUtterance, ret_obj_l):
         """
@@ -55,12 +72,29 @@ class FebAlternativeAnswer(FebComponent):
         var_dump(header='FebAlternativeAnswer pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
 
         #логика предложения альтернативных вариантов
-        TEMP_CAN_SUGGEST_ALTERNATIVE = 'TEST_ALTERNATIVE' in utt.text
+        entities_list = [entity for entity in utt.entities]
+        intents_list = [intent for intent in utt.intents]
+        if len(entities_list)>0 and len(intents_list)>0:
+            ent = entities_list[0]
+            intent = intents_list[0]
+            if ent.info:
+                alt_pattern = self.alternative_intent_select(ent.info, intent.type)
+                setattr(utt, 'alt_ans_pattern', alt_pattern)
+            else:
+                setattr(utt, 'alt_ans_pattern', None)
+        else:
+            setattr(utt, 'alt_ans_pattern', None)
+        # TEMP_CAN_SUGGEST_ALTERNATIVE = 'TEST_ALTERNATIVE' in utt.text #False True
 
-        
-        if not TEMP_CAN_SUGGEST_ALTERNATIVE:
+        # utt.alt_ans_pattern
+        if not utt.alt_ans_pattern:
             return FebStopBranch.STOP, [utt]
         else:
             return [utt], FebStopBranch.STOP
+
+        # if not TEMP_CAN_SUGGEST_ALTERNATIVE:
+        #     return FebStopBranch.STOP, [utt]
+        # else:
+        #     return [utt], FebStopBranch.STOP
         
         # return utt, FebStopBranch.STOP

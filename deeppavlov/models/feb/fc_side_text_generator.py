@@ -39,10 +39,9 @@ class FebSideTextGenerator(FebComponent):
 
     def __init__(self, template=None, **kwargs):
         super().__init__(**kwargs)
-        self.template = template # Шаблон для ответа 
+        self.template = template # Шаблон для ответа
     # don't override basic realization
     # def test_and_prepare(self, utt):
-
 
 
     def process(self, utt: FebUtterance, context):
@@ -58,12 +57,15 @@ class FebSideTextGenerator(FebComponent):
 
         gen_context = utt.get_gen_context()
 
-        result = answers.answer(gen_context, prepared_pattern = self.template )  
+        # self.template + +  utt.als_ans
+
+        # if false : self.template = have_alternative or no_alternative
+        result = answers.answer(gen_context, prepared_pattern = self.template+'_'+utt.alt_ans_pattern if utt.alt_ans_pattern else self.template)
         side_utt = FebUtterance(f'{result}')
         
         var_dump(header='textgen', msg=f'fc_side_text_gen вернул {side_utt}')
         return side_utt
-        
+
 
     def pack_result(self, utt, ret_obj_l):
         """

@@ -9,6 +9,7 @@ from deeppavlov.core.common.log import get_logger
 import requests
 import json
 from datetime import datetime
+from dateutil import parser as date_parse
 
 log = get_logger(__name__)
 
@@ -283,6 +284,7 @@ class FebEntity(FebObject):
         self.middle = kwargs.get('middle', None)
         self.last = kwargs.get('last', None)
         self.rollback_normal_form_capitalization()
+        self.info = kwargs.get('info', None)
 
     def to_text(self):
         return ' '.join(t.text for t in self.tokens)  # todo rollback "t.text" from t['text']
@@ -409,7 +411,9 @@ class FebAuthor(FebEntity):
 
     def __init__(self, **kwargs):
         super().__init__(FebEntity.AUTHOR, **kwargs)
-
+        self.first = kwargs.get('first', None)
+        self.middle = kwargs.get('middle', None)
+        self.last = kwargs.get('last', None)
 
 class FebBook(FebEntity):
 
@@ -427,6 +431,13 @@ class FebDate(FebEntity):
 
     def __init__(self, **kwargs):
         super().__init__(FebEntity.DATE, **kwargs)
+        self.year()
+
+    def year(self):
+        if self.text_from_base:
+            str_year = str(date_parse.parse(str(self.text_from_base)).year)
+            self.text_from_base = str_year
+
 
 class FebChar(FebEntity):
 
@@ -488,44 +499,67 @@ class FebIntent(FebObject):
         """
         return str(self.result_val)
 
-    @property
-    def results_val_list_parse(self):
-        results_keys_set = set([list(result.keys())[0] for result in self.result_val])
-        parsed_result_dict = {}
-        for result_key in results_keys_set:
-            values_with_same_key_list = []
-            for result in self.result_val:
-                try:
-                    value = result[result_key]
-                except KeyError:
-                    continue
-                else:
-                    values_with_same_key_list.append(value)
+    # @property
+    # def results_val_list_parse(self):
+    #     results_keys_set = set(list([result.keys() for result in self.result_val][0]))
+    #     parsed_result_dict = {}
+    #     for result_key in results_keys_set:
+    #         values_with_same_key_list = []
+    #         for result in self.result_val:
+    #             try:
+    #                 value = result[result_key]
+    #             except KeyError:
+    #                 continue
+    #             else:
+    #                 if value:
+    #                     values_with_same_key_list.append(value)
+    #                 else:
+    #                     continue
+    #         if len(values_with_same_key_list) > 0:
+    #             parsed_result_dict[result_key] = list(set(values_with_same_key_list))
+    #
+    #     return parsed_result_dict, list(results_keys_set)
 
-            parsed_result_dict[result_key] = values_with_same_key_list
-
-        return parsed_result_dict, list(results_keys_set)
-
-    @property
-    def results_to_entities(self):
-        results_dict,results_keys = self.results_val_list_parse
-        for results_key in results_keys:
-            results_val_list = results_dict[results_key]
-            if results_key in ('authorLabel','authorlabel') :
-                results_dict[results_key] = [FebAuthor(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key in ('bookLabel','booklabel'):
-                results_dict[results_key] = [FebBook(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key in ('placeLabel','placelabel'):
-                results_dict[results_key] = [FebGeox(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key == 'years':
-                results_dict[results_key] = [FebDate(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key == ('charsLabel','charslabel'):
-                results_dict[results_key] = [FebChar(text_from_base=result_text) for result_text in results_val_list]
-            elif results_key in ('langLabel', 'genreLabel','subjLabel'):
-                results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
-            else:
-                results_dict[results_key] = [FebEntity(type=None, text_from_base=result_text) for result_text in results_val_list]
-        return results_dict, results_keys
+    # @property
+    # def results_val_list_parse(self):
+    #     results_keys_set = set(list([result.keys() for result in self.result_val][0]))
+    #     parsed_result_dict = {}
+    #     for result_key in results_keys_set:
+    #         values_with_same_key_list = []
+    #         for result in self.result_val:
+    #             try:
+    #                 value = result[result_key]
+    #             except KeyError:
+    #                 continue
+    #             else:
+    #                 values_with_same_key_list.append(value)
+    #
+    #         parsed_result_dict[result_key] = list(set(values_with_same_key_list))
+    #     log.info(f"__FebIntent__-results_val_list_parse___ parsed_result_dict : {parsed_result_dict}, result_keys: {results_keys_set}")
+    #     return parsed_result_dict, list(results_keys_set)
+    #
+    # @property
+    # def results_to_entities(self):
+    #     results_dict,results_keys = self.results_val_list_parse
+    #     for results_key in results_keys:
+    #         results_val_list = results_dict[results_key]
+    #         if results_key in ('authorLabel','authorlabel') :
+    #             results_dict[results_key] = [FebAuthor(text_from_base=result_text) for result_text in results_val_list]
+    #         elif results_key in ('bookLabel','booklabel'):
+    #             results_dict[results_key] = [FebBook(text_from_base=result_text) for result_text in results_val_list]
+    #         elif results_key in ('placeLabel','placelabel'):
+    #             results_dict[results_key] = [FebGeox(text_from_base=result_text) for result_text in results_val_list]
+    #         elif results_key == 'years':
+    #             results_dict[results_key] = [FebDate(text_from_base=result_text) for result_text in results_val_list]
+    #         elif results_key == ('charsLabel','charslabel'):
+    #             results_dict[results_key] = [FebChar(text_from_base=result_text) for result_text in results_val_list]
+    #         elif results_key in ('langLabel', 'genreLabel','subjLabel'):
+    #             results_dict[results_key] = [FebOthers(text_from_base=result_text) for result_text in results_val_list]
+    #         else:
+    #             results_dict[results_key] = [FebEntity(type=None, text_from_base=result_text) for result_text in results_val_list]
+    #     log.info(
+    #         f"__FebIntent__-results_to_entities__ parsed_result_dict : {results_dict}, result_keys: {results_keys}")
+    #     return results_dict, results_keys
 
 
 
@@ -591,7 +625,7 @@ class FebUtterance(FebObject):
             gen_context['query_name'] = intent.type
             gen_context['log'] = log
             if intent.result_val:
-                results = intent.results_to_entities
+                results = (intent.result_val, list(intent.result_val.keys()))  # results = intent.results_to_entities
                 gen_context['results'] = results[0]
                 gen_context['results_keys'] = results[1]
             else:
