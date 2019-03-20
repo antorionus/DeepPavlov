@@ -58,7 +58,12 @@ class LoadAnswer(FebComponent):
         """
         utt.entities = utt.context['prev_entities']
         intent = utt.intents[0]
-        intent.result_val = {intent.type : utt.entities[0].info[utt.context['alt_intent']]}
+        if intent.type.startswith('book_') and len(utt.entities) > 0:
+            entities_list = [e for e in utt.entities if isinstance(e, FebBook)]
+        else:
+            entities_list = [e for e in utt.entities if isinstance(e, FebAuthor)]
+        ent = entities_list[0]
+        intent.result_val = {intent.type : ent.info[utt.context['alt_intent']]}
         return utt
 
     def pack_result(self, utt: FebUtterance, ret_obj_l):

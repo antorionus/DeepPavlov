@@ -93,8 +93,14 @@ class LocalQuery(FebComponent):
             print('qparams', query_params)
             #TODO: продумать, как обойти ent_l[0]
             if not errors:
+                if intent.type.startswith('book_') and len(entities) > 0:
+                    entities_list = [e for e in entities if isinstance(e, FebBook)]
+                else:
+                    entities_list = [e for e in entities if isinstance(e, FebAuthor)]
+                ent = entities_list[0]
+
                 try:
-                    intent.result_val = {intent.type : ent_l[0].info[intent.type]}
+                    intent.result_val = {intent.type : ent.info[intent.type]}
                 except KeyError:
                     intent.result_val = {'error':'error not in entity.info'}
                 # intent.result_val = functions.execute_query_sql(query, **query_params)

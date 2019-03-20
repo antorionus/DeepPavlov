@@ -72,11 +72,14 @@ class FebAlternativeAnswer(FebComponent):
         var_dump(header='FebAlternativeAnswer pack_result', msg = f'utt = {utt}, ret_obj_l = {ret_obj_l}')
 
         #логика предложения альтернативных вариантов
-        entities_list = [entity for entity in utt.entities]
         intents_list = [intent for intent in utt.intents]
-        if len(entities_list)>0 and len(intents_list)>0:
-            ent = entities_list[0]
+        if len(intents_list)>0:
             intent = intents_list[0]
+            if intent.type.startswith('book_') and len(utt.entities)>0:
+                entities_list = [e for e in utt.entities if isinstance(e, FebBook)]
+            else:
+                entities_list = [e for e in utt.entities if isinstance(e, FebAuthor)]
+            ent = entities_list[0]
             if ent.info:
                 alt_pattern = self.alternative_intent_select(ent.info, intent.type)
                 setattr(utt, 'alt_ans_pattern', alt_pattern)

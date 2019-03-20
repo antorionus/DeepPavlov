@@ -620,11 +620,16 @@ class FebUtterance(FebObject):
 
     def get_gen_context(self) -> dict:
         gen_context = {}
-        gen_context['params'] = [e for e in self.entities]  # [e.to_values_dict() for e in self.entities]
+        # gen_context['params'] = [e for e in self.entities]  # [e.to_values_dict() for e in self.entities]
 
         if len(self.intents) > 0:
             # TODO: case of many intents
             intent = self.intents[0]
+
+            if intent.type.startswith('book_'):
+                gen_context['params'] = [e for e in self.entities if isinstance(e, FebBook)]
+            else:
+                gen_context['params'] = [e for e in self.entities if isinstance(e, FebAuthor)]
             gen_context['query_name'] = intent.type
             gen_context['log'] = log
             if intent.result_val:
