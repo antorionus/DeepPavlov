@@ -628,8 +628,10 @@ class FebUtterance(FebObject):
 
             if intent.type.startswith('book_'):
                 gen_context['params'] = [e for e in self.entities if isinstance(e, FebBook)]
-            else:
+            elif intent.type.startswith('author_'):
                 gen_context['params'] = [e for e in self.entities if isinstance(e, FebAuthor)]
+            else:
+                gen_context['params'] = [e for e in self.entities]
             gen_context['query_name'] = intent.type
             gen_context['log'] = log
             if intent.result_val:
