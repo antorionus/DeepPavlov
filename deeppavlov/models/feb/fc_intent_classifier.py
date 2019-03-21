@@ -139,16 +139,18 @@ class IntentClassifier(FebComponent):
                     tokens_for_classifier.append(f'{token.normal_form}_{token.pos}')
 
             intents_code = predict_yes_no(tokens_for_classifier, yes, no)
-            var_dump(header='wnw_intent_classificator', msg = f'intents_code')
+            var_dump(header='wnw_intent_classificator', msg = f'{intents_code}')
 
             if intents_code == "yes":
                 intent = FebIntent(utt.context['alt_intent'])
+                utt.intents.append(intent)
             elif intents_code == "no":
                 intent = FebIntent(FebIntent.WNW_NO)
+                utt.intents.append(intent)
             else:
                 # intent = FebIntent(FebIntent.WNW_NEG)
                 pass
-            utt.intents.append(intent)
+            
 
         else:
             raise RuntimeError(f"{self.intent_classifier_type} классификатор не реализован")
@@ -179,6 +181,7 @@ class IntentClassifier(FebComponent):
                 else:
                     answer[0] = [utt]
             else: #WNW_NEG
+                utt.clear_context() 
                 answer[2] = [utt]
             
             var_dump(header='pack result intent_classifier', msg=f'{answer}')

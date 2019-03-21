@@ -10,6 +10,7 @@ import requests
 import json
 from datetime import datetime
 from dateutil import parser as date_parse
+from ..feb import CONTEXTS
 
 log = get_logger(__name__)
 
@@ -570,6 +571,7 @@ class FebIntent(FebObject):
 class FebUtterance(FebObject):
     ERROR_IN_RESULT = 'error_in_result'
 
+
     def __init__(self, text, **kwargs):
         super().__init__(**kwargs)
 
@@ -581,6 +583,7 @@ class FebUtterance(FebObject):
         self.re_text = None  # responce text
         self.chat_id = kwargs.get('chat_id', None)  #ID отправителя
         self.pattern_type = kwargs.get('pattern_type', None)  #название шаблона в файле
+        self.context = {} # контекст предыдущего сообщения
 
     def to_dump(self):
         # return {k: [FebObject.recursive_json(item) for item in v if isinstance(item, (FebObject, FebError)) ] for k, v in self.__dict__.items() if v is not None }
@@ -628,8 +631,11 @@ class FebUtterance(FebObject):
 
             if intent.type.startswith('book_'):
                 gen_context['params'] = [e for e in self.entities if isinstance(e, FebBook)]
-            else:
+            elif intent.type.startswith('author_'):
                 gen_context['params'] = [e for e in self.entities if isinstance(e, FebAuthor)]
+            else:
+                gen_context['params'] = [e for e in self.entities]
+
             gen_context['query_name'] = intent.type
             gen_context['log'] = log
             if intent.result_val:
@@ -645,3 +651,8 @@ class FebUtterance(FebObject):
             gen_context['results_keys'] = ['error']
 
         return gen_context
+
+    def clear_context(self) -> None:
+        if self.chat_id in CONTEXTS:
+            CONTEXTS.pop(self.chat_id)
+        self.context = {}

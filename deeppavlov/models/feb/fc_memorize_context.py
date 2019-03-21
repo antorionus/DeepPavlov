@@ -58,7 +58,6 @@ class FebMemorizeContext(FebComponent):
 
             CONTEXTS[chat_id] = {'timestamp': current_timestamp, 'prev_entities': entities, 'alt_intent': intent}
         else:
-            if utt.chat_id in CONTEXTS:
-                CONTEXTS.pop(utt.chat_id)
+            utt.clear_context() 
 
         return [(utt, {})]

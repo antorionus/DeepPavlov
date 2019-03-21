@@ -71,9 +71,9 @@ class FebErrorAnalysis(FebComponent):
 
         gen_context = utt.get_gen_context()
 
-        query_type = gen_context['query_name']
-        params_list = gen_context['params']
-        results_dict = gen_context['results']
+        query_type = gen_context['query_name'] # intent.type
+        params_list = gen_context['params'] # entities 
+        results_dict = gen_context['results'] # intent.result
 
         possible_options = ['no_class', 'nth_but_class', 'no_qid', 'no_data']
         answer = OrderedDict((o, FebStopBranch.STOP) for o in possible_options)

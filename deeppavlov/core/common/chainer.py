@@ -194,7 +194,7 @@ class Chainer(Component):
                 #если все входные параметры в памяти и компонент еще не отрабатывал
                 if component_ready:
                     x = [mem[k] for k in in_params]
-                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop Start', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, mem = {mem.keys()}, \n x = {x}')
+                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop Start', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, mem = mem.keys(), \n x = x')
                     res = component(*x)
                     if len(out_params) == 1:
                         if res != FebStopBranch.STOP:
@@ -203,7 +203,7 @@ class Chainer(Component):
                         for out_param_key, out_param_value in zip(out_params, res):
                             if out_param_value != FebStopBranch.STOP:
                                 mem[out_param_key] = out_param_value
-                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop End', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, x={x}, \nmem={mem.keys()}, \nres={res}')
+                    var_dump(header=f'[{chainer_iter_num}] In Pipe Loop End', msg = f'(in_keys={in_keys},\n in_params={in_params})\n, out_params={out_params},\n component={component}\n, x=x, \nmem=mem.keys(), \nres={res}')
                     chainer_iter_num += 1
                     components_done.append(component)
                     break

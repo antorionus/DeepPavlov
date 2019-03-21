@@ -67,8 +67,8 @@ class FebRecallContext(FebComponent):
         var_dump(header='RecallContext', msg=f'ret_obj_l={ret_obj_l}, FebStopBranch() = {FebStopBranch()}')
 
         if chat_id not in CONTEXTS:
-            return ret_obj_l, FebStopBranch.STOP
             utt.context = {}
+            return ret_obj_l, FebStopBranch.STOP
         else:
             utt.context = CONTEXTS[utt.chat_id]
             return FebStopBranch.STOP, ret_obj_l
