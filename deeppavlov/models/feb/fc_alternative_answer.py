@@ -73,13 +73,15 @@ class FebAlternativeAnswer(FebComponent):
 
         #логика предложения альтернативных вариантов
         intents_list = [intent for intent in utt.intents]
-        if len(intents_list)>0:
+        if len(intents_list) > 0 and len(utt.entities) > 0:
             intent = intents_list[0]
-            if intent.type.startswith('book_') and len(utt.entities)>0:
+            if intent.type.startswith('book_'):
                 entities_list = [e for e in utt.entities if isinstance(e, FebBook)]
+                ent = entities_list[0]
             else:
                 entities_list = [e for e in utt.entities if isinstance(e, FebAuthor)]
-            ent = entities_list[0]
+                ent = entities_list[0]
+
             if ent.info:
                 alt_pattern = self.alternative_intent_select(ent.info, intent.type)
                 setattr(utt, 'alt_ans_pattern', alt_pattern)
